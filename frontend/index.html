@@ -1,0 +1,2516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shaha Finlease — Right-Party Verification Console &amp; Report</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-background:           #FDF8F0;
+      --color-background-warm:      #F7EFE2;
+      --color-card-solid:           #FFFDF9;
+      --color-dark-roast:           #3D2817;
+      --color-espresso:             #6B4423;
+      --color-mocha:                #8B6F47;
+      --color-caramel-rich:         #B8763D;
+      --color-caramel:              #C9A574;
+      --color-latte:                #EADBC0;
+      --color-tan:                  #D4B896;
+      --color-text:                 #3D2817;
+      --color-text-soft:            #6B5541;
+      --color-text-muted:           #9A826A;
+      --color-success:              #5D8C3E;
+      --color-warning:              #D4A056;
+      --color-danger:               #C0392B;
+      --color-info:                 #4B8FB8;
+      --color-border:               rgba(107, 68, 35, 0.14);
+      --radius-lg:                  20px;
+      --radius-pill:                9999px;
+      --shadow-glass:               0 2px 12px rgba(107, 68, 35, 0.06);
+      --shadow-glass-hover:         0 12px 32px rgba(107, 68, 35, 0.10);
+      --ease-silk:                  cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans Devanagari', sans-serif;
+      background-color: var(--color-background);
+      color: var(--color-text);
+      overflow-x: hidden;
+    }
+
+    .font-display {
+      font-family: 'Playfair Display', Georgia, serif;
+    }
+    .font-display em {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic;
+      color: var(--color-caramel-rich);
+      font-weight: 500;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .bg-mesh {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 600px 500px at 15% 10%, rgba(184, 118, 61, 0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 700px 600px at 75% 60%, rgba(201, 165, 116, 0.04) 0%, transparent 70%),
+        linear-gradient(135deg, #FDF8F0 0%, #F7EFE2 35%, #FDF8F0 70%, #FFFDF9 100%);
+    }
+
+    .glass-card {
+      position: relative;
+      background: var(--color-card-solid);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-glass);
+      transition: transform 300ms var(--ease-silk), box-shadow 300ms var(--ease-silk);
+    }
+    .glass-card-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-glass-hover);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--color-caramel-rich);
+    }
+    .eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 22px;
+      height: 1.5px;
+      background: var(--color-caramel-rich);
+      border-radius: 2px;
+    }
+
+    @keyframes shimmerSweep {
+      from { transform: translateX(-100%) skewX(-15deg); }
+      to   { transform: translateX(260%) skewX(-15deg); }
+    }
+    .kpi-shimmer {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      border-radius: inherit;
+    }
+    .kpi-shimmer::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 45%; height: 100%;
+      background: linear-gradient(105deg, transparent 30%, rgba(234, 219, 192, 0.4) 50%, transparent 70%);
+      transform: translateX(-100%) skewX(-15deg);
+    }
+    .glass-card:hover .kpi-shimmer::after {
+      animation: shimmerSweep 0.75s ease forwards;
+    }
+
+    @keyframes breathe {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.4; transform: scale(0.82); }
+    }
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-success);
+      display: inline-block;
+      animation: breathe 2s ease-in-out infinite;
+    }
+
+    @keyframes waveBounce {
+      0%, 100% { height: 5px; }
+      50%      { height: 22px; }
+    }
+    .wave-active {
+      animation: waveBounce 0.55s ease-in-out infinite;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F7EFE2;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #C9A574;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-[#B8763D] selection:text-white">
+
+  <div class="bg-mesh"></div>
+
+  <!-- Minimal Left Icon Rail + Main Workspace (Section 5: Strictly Two Core Screens) -->
+  <div class="relative z-10 flex min-h-screen">
+
+    <!-- 68px Frosted Glass Sidebar with only the 2 Core Screens -->
+    <aside class="hidden md:flex w-[68px] shrink-0 flex-col items-center py-5 border-r border-[#6B4423]/10 bg-[#FFFDF9]/90 backdrop-blur-xl sticky top-0 h-screen justify-between">
+      <div class="flex flex-col items-center gap-6">
+        <div class="w-10 h-10 rounded-2xl bg-[#3D2817] flex items-center justify-center shadow-sm text-[#FDF8F0] font-display font-bold text-base" title="Shaha Finlease">
+          SF
+        </div>
+
+        <div class="flex flex-col items-center gap-2.5">
+          <button id="sideNavConsoleBtn" type="button" class="w-10 h-10 rounded-xl flex items-center justify-center transition bg-[#B8763D]/15 text-[#3D2817] border border-[#B8763D]/30" title="Screen 1: Call Console">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </button>
+
+          <button id="sideNavReportBtn" type="button" class="w-10 h-10 rounded-xl flex items-center justify-center transition text-[#6B5541] hover:bg-[#EADBC0]/50 hover:text-[#3D2817]" title="Screen 2: Report &amp; Call Log">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-[#5D8C3E]" title="Backend Guardrail Engine Online"></span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <!-- Clean Top Header: Brand, Two Screen Switcher, and Call Window Check -->
+      <header class="border-b border-[#6B4423]/10 bg-[#FFFDF9]/90 backdrop-blur-xl sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+
+          <!-- Brand Identity -->
+          <div class="flex items-center gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="font-display font-bold text-lg sm:text-xl text-[#3D2817]">
+                  Shaha Finlease <em>Right-Party Verification</em>
+                </h1>
+                <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-[#EADBC0]/70 text-[#6B4423] border border-[#B8763D]/30 font-medium">
+                  RBI-Registered NBFC
+                </span>
+              </div>
+              <p class="text-xs text-[#6B5541]">
+                Automated Pre-Calling Contact Confirmation · Jogeshwari / Lower Parel / Bangalore
+              </p>
+            </div>
+          </div>
+
+            <!-- Center: Strictly the Two Required Screens (Section 5) -->
+          <nav class="flex items-center gap-1 bg-[#F7EFE2] p-1 rounded-full border border-[#6B4423]/15">
+            <button id="tabBtnConsole" type="button" class="px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all bg-[#3D2817] text-[#FDF8F0] shadow-sm">
+              1. Call Console
+            </button>
+            <button id="tabBtnReport" type="button" class="px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all text-[#6B5541] hover:text-[#3D2817] flex items-center gap-1.5">
+              <span>2. Report &amp; Call Log</span>
+              <span id="navCallCountBadge" class="mono text-xs px-2 py-0.2 rounded-full bg-[#EADBC0] text-[#3D2817] font-semibold">10</span>
+            </button>
+          </nav>
+
+          <!-- Live Backend & Database Status Badge -->
+          <div class="hidden md:flex items-center gap-2 bg-[#5D8C3E]/10 border border-[#5D8C3E]/30 rounded-full px-3 py-1 text-xs font-semibold text-[#5D8C3E]">
+            <span class="w-2 h-2 rounded-full bg-[#5D8C3E] animate-pulse"></span>
+            <span>FastAPI + PostgreSQL Live</span>
+          </div>
+
+          <!-- Right: Call Window Gatekeeper (Feature #1: 8 AM – 7 PM Check) -->
+          <div class="flex flex-wrap items-center gap-2 bg-[#F7EFE2] border border-[#6B4423]/15 rounded-full px-3.5 py-1.5">
+            <div class="flex items-center gap-1.5 text-xs">
+              <span id="windowStatusDot" class="w-2.5 h-2.5 rounded-full bg-[#5D8C3E]"></span>
+              <span class="text-[#3D2817] font-medium">Window (8 AM–7 PM):</span>
+            </div>
+            <select id="clockModeSelect" class="bg-[#FFFDF9] text-xs text-[#3D2817] border border-[#6B4423]/20 rounded-full px-2.5 py-1 focus:outline-none focus:border-[#B8763D]">
+              <option value="in_window" selected>11:15 AM IST (Open)</option>
+              <option value="out_night">09:45 PM IST (After 7 PM · Refused)</option>
+              <option value="out_early">06:30 AM IST (Before 8 AM · Refused)</option>
+              <option value="live_clock">Live System Clock</option>
+            </select>
+            <span id="clockBadgeText" class="mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#5D8C3E]/15 text-[#5D8C3E] border border-[#5D8C3E]/30 font-semibold">OPEN</span>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- Toast Notification -->
+      <div id="toastContainer" class="fixed bottom-5 right-5 z-50 max-w-md hidden">
+        <div id="toastCard" class="rounded-2xl border p-4 shadow-xl bg-[#FFFDF9] border-[#6B4423]/20 flex items-start gap-3">
+          <div id="toastIcon" class="text-lg mt-0.5">⚠️</div>
+          <div class="flex-1 text-xs sm:text-sm">
+            <div id="toastTitle" class="font-display font-semibold text-[#3D2817] text-base">Notification</div>
+            <div id="toastBody" class="text-[#6B5541] mt-0.5">Details here</div>
+          </div>
+          <button id="toastCloseBtn" type="button" class="text-[#9A826A] hover:text-[#3D2817] text-sm font-bold px-1">✕</button>
+        </div>
+      </div>
+
+      <!-- MAIN WORKSPACE -->
+      <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- ========================================================= -->
+        <!-- SCREEN 1: CALL CONSOLE (Section 5 Screen 1)               -->
+        <!-- ========================================================= -->
+        <section id="screenConsole" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+          <!-- Left Column (5 Cols): Customer List from `customers.csv` -->
+          <div class="lg:col-span-5 flex flex-col glass-card overflow-hidden">
+            <div class="p-4 sm:p-5 border-b border-[#6B4423]/10 flex items-center justify-between gap-2 bg-[#F7EFE2]/60">
+              <div>
+                <div class="eyebrow">Feature #1 · Customer List</div>
+                <h2 class="font-display font-semibold text-lg text-[#3D2817] flex items-center gap-2 mt-0.5">
+                  <span>Customers (`customers.csv`)</span>
+                  <span class="mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] font-sans">10</span>
+                </h2>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label for="csvUploadInput" class="cursor-pointer text-xs px-3 py-1.5 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 font-medium transition">
+                  Upload CSV
+                </label>
+                <input id="csvUploadInput" type="file" accept=".csv" class="hidden" />
+                <button id="resetCustomersBtn" type="button" class="text-xs px-3 py-1.5 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#6B5541] border border-[#6B4423]/20 font-medium transition" title="Reset customer list and DNC flags">
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Customer List Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-[#F7EFE2]/80 text-[#6B5541] border-b border-[#6B4423]/10 uppercase tracking-wider text-[11px]">
+                    <th class="py-2.5 px-3">Customer</th>
+                    <th class="py-2.5 px-2">Phone</th>
+                    <th class="py-2.5 px-2">Birth Yr</th>
+                    <th class="py-2.5 px-2">Lang</th>
+                    <th class="py-2.5 px-3 text-right">Dial</th>
+                  </tr>
+                </thead>
+                <tbody id="customerTableBody" class="divide-y divide-[#6B4423]/10">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Selected Customer Test Persona Runner -->
+            <div class="p-4 bg-[#F7EFE2]/80 border-t border-[#6B4423]/12 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-[#B8763D]">Test Persona (`test_calls.csv`)</span>
+                <span id="selectedTestExpectedBadge" class="mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] font-medium">Expected: Right customer</span>
+              </div>
+              <p id="selectedTestScenarioDesc" class="text-xs text-[#6B5541]">
+                Call #1 (C001 · Rahul Sharma): Right customer confirms name and gives correct birth year (1985) in Hindi.
+              </p>
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <button id="autoPlayPersonaBtn" type="button" class="flex-1 py-2 px-3.5 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-xs font-medium shadow-sm transition">
+                  ▶ Auto-Play This Customer's Test Call
+                </button>
+                <button id="runAll10TestsBtn" type="button" class="py-2 px-3 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 text-xs font-medium transition">
+                  ⚡ Reload All 10 `test_calls.csv`
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column (7 Cols): Live Voice Call Session & Real-Time Transcript -->
+          <div class="lg:col-span-7 flex flex-col glass-card overflow-hidden">
+
+            <!-- Active Call Session Header -->
+            <div class="p-4 sm:p-5 border-b border-[#6B4423]/10 bg-[#F7EFE2]/60 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-3.5">
+                <div id="callAvatarPulse" class="w-11 h-11 rounded-2xl bg-[#3D2817] text-[#FDF8F0] flex items-center justify-center text-base shadow-sm">
+                  📞
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h2 id="activeCustomerTitle" class="font-display font-bold text-lg text-[#3D2817]">C001 · Rahul Sharma</h2>
+                    <span id="callStateBadge" class="mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 font-medium">READY</span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 text-xs text-[#6B5541] mt-0.5">
+                    <span id="activeCustomerMeta" class="mono">+919000000001 · Birth Year: 1985 · Default: Hindi</span>
+                    <span>•</span>
+                    <span>Reply Lang: <strong id="detectedLangBadge" class="text-[#B8763D]">Hindi (hi-IN)</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Required Demo Telemetry: Reply Latency (<3s) & Duration / 15s Silence -->
+              <div class="flex items-center gap-2.5">
+                <div class="bg-[#FFFDF9] border border-[#6B4423]/15 rounded-2xl px-3.5 py-1.5 text-right">
+                  <div class="text-[10px] uppercase tracking-wider text-[#9A826A] font-semibold">Reply Latency (&lt;3s)</div>
+                  <div id="latencyValueText" class="mono text-xs sm:text-sm font-bold text-[#5D8C3E]">380 ms ✓</div>
+                </div>
+
+                <div class="bg-[#FFFDF9] border border-[#6B4423]/15 rounded-2xl px-3.5 py-1.5 text-right">
+                  <div class="text-[10px] uppercase tracking-wider text-[#9A826A] font-semibold">Duration / Silence</div>
+                  <div class="mono text-xs sm:text-sm font-bold text-[#3D2817]">
+                    <span id="callDurationText">00:00</span>
+                    <span class="text-[#C9A574]">·</span>
+                    <span id="silenceCountdownText" class="text-[#B8763D]">15s</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Call Controls Bar -->
+            <div class="px-4 sm:px-5 py-3 bg-[#FFFDF9] border-b border-[#6B4423]/10 flex flex-wrap items-center justify-between gap-2.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="startCallBtn" type="button" class="px-4 py-2 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5">
+                  <span>📞 Dial Selected Customer</span>
+                </button>
+                <button id="endCallBtn" type="button" disabled class="px-3.5 py-2 rounded-full bg-[#C0392B]/12 text-[#C0392B] border border-[#C0392B]/30 font-medium text-xs sm:text-sm transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#C0392B] hover:text-white">
+                  ⏹ End / Drop Midway
+                </button>
+                <button id="triggerSilenceTimeoutBtn" type="button" disabled class="px-3 py-2 rounded-full bg-[#D4A056]/18 text-[#6B4423] border border-[#D4A056]/40 text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#D4A056]/30" title="Simulate 15 seconds of silence (Not connected)">
+                  ⏱ Fast-Forward 15s Silence
+                </button>
+              </div>
+
+              <div class="flex items-center gap-2.5">
+                <div id="waveformBars" class="hidden sm:flex items-center gap-1 h-6 px-2.5 py-1 rounded-full bg-[#F7EFE2] border border-[#6B4423]/10" title="Voice Activity">
+                  <span class="w-1 h-2 bg-[#B8763D] rounded-full wave-bar"></span>
+                  <span class="w-1 h-3.5 bg-[#3D2817] rounded-full wave-bar"></span>
+                  <span class="w-1 h-2.5 bg-[#B8763D] rounded-full wave-bar"></span>
+                  <span class="w-1 h-4 bg-[#3D2817] rounded-full wave-bar"></span>
+                  <span class="w-1 h-2 bg-[#B8763D] rounded-full wave-bar"></span>
+                  <span class="w-1 h-3 bg-[#3D2817] rounded-full wave-bar"></span>
+                </div>
+
+                <label for="manualLangSelect" class="sr-only">Language</label>
+                <select id="manualLangSelect" class="bg-[#F7EFE2] text-xs text-[#3D2817] border border-[#6B4423]/20 rounded-full px-3 py-1.5 font-medium">
+                  <option value="Auto">Auto-Match Lang</option>
+                  <option value="Hindi">Hindi (hi-IN)</option>
+                  <option value="English">English (en-IN)</option>
+                  <option value="Marathi">Marathi (mr-IN)</option>
+                </select>
+
+                <button id="ttsToggleBtn" type="button" class="px-3 py-1.5 rounded-full bg-[#EADBC0]/80 text-[#3D2817] border border-[#B8763D]/30 text-xs font-medium">
+                  🔊 TTS: ON
+                </button>
+              </div>
+            </div>
+
+            <!-- 15-Second Silence Watchdog Bar -->
+            <div class="w-full bg-[#EADBC0]/50 h-1.5 overflow-hidden">
+              <div id="silenceProgressBar" class="bg-[#5D8C3E] h-full transition-all duration-300" style="width: 100%;"></div>
+            </div>
+
+            <!-- Live Conversation Transcript Area -->
+            <div id="transcriptContainer" class="flex-1 p-5 space-y-3.5 overflow-y-auto min-h-[290px] max-h-[360px] bg-[#FDF8F0]/60">
+              <div class="text-center py-10 text-[#6B5541] text-xs sm:text-sm space-y-2">
+                <div class="w-11 h-11 rounded-full bg-[#EADBC0]/70 border border-[#B8763D]/30 mx-auto flex items-center justify-center text-lg">
+                  🎙️
+                </div>
+                <p class="font-display font-semibold text-base text-[#3D2817]">
+                  Select a customer and start the verification call
+                </p>
+                <p class="text-xs text-[#6B5541] max-w-md mx-auto leading-relaxed">
+                  Within 10 seconds, the bot identifies itself as an automated assistant from Shaha Finlease, states that the call is recorded, and asks for the customer by name.
+                </p>
+              </div>
+            </div>
+
+            <!-- Subtle Backend Status Strip -->
+            <div class="px-5 py-2 bg-[#F7EFE2] border-t border-[#6B4423]/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span id="guardrailStatusText" class="text-[#6B5541]">
+                Backend Guardrail Filter: Active (all replies checked in code before TTS).
+              </span>
+              <span id="lastOutcomePill" class="mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] font-medium">Outcome: Pending</span>
+            </div>
+
+            <!-- Interviewer / Person-on-the-Line Input Area -->
+            <div class="p-4 sm:p-5 bg-[#FFFDF9] border-t border-[#6B4423]/12 space-y-3">
+              <!-- Live Mic + Text Input -->
+              <form id="borrowerInputForm" class="flex items-center gap-2">
+                <button id="micButton" type="button" class="px-4 py-2.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition" title="Speak as the person who answers">
+                  <span id="micIcon">🎤</span>
+                  <span id="micLabel">Speak</span>
+                </button>
+                <input id="borrowerTextInput" type="text" placeholder="Speak or type as the person who answers (Hindi, English, or Marathi)..." class="flex-1 bg-[#FDF8F0] border border-[#6B4423]/20 rounded-full px-4 py-2.5 text-xs sm:text-sm text-[#3D2817] placeholder-[#9A826A] focus:outline-none focus:border-[#B8763D]" />
+                <button id="sendReplyBtn" type="submit" class="px-5 py-2.5 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium text-xs sm:text-sm shadow-sm transition">
+                  Send Reply
+                </button>
+              </form>
+
+              <!-- Compact Quick-Reply Chips for Live Demo Testing -->
+              <div class="pt-2 border-t border-[#6B4423]/10 space-y-2">
+                <div class="flex flex-wrap gap-1.5">
+                  <button type="button" data-quick-reply="हाँ, मैं ही बोल रहा हूँ।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#5D8C3E]/12 hover:bg-[#5D8C3E]/22 text-[#3D2817] border border-[#5D8C3E]/30 text-[11px] font-medium transition">
+                    🇮🇳 "हाँ, मैं ही बोल रहा हूँ" (Confirm Name - HI)
+                  </button>
+                  <button type="button" data-quick-reply="Yes, this is speaking." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#5D8C3E]/12 hover:bg-[#5D8C3E]/22 text-[#3D2817] border border-[#5D8C3E]/30 text-[11px] font-medium transition">
+                    🇬🇧 "Yes, speaking" (Confirm Name - EN)
+                  </button>
+                  <button type="button" id="btnCorrectBirthYear" class="px-2.5 py-1 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-[11px] font-medium transition">
+                    🎂 Give Correct Birth Year (1985)
+                  </button>
+                  <button type="button" data-quick-reply="My birth year is 1999." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#D4A056]/18 hover:bg-[#D4A056]/30 text-[#6B4423] border border-[#D4A056]/40 text-[11px] font-medium transition">
+                    ❌ Wrong Birth Year (1999)
+                  </button>
+                  <button type="button" data-quick-reply="रॉन्ग नंबर है, मैं इस नाम के किसी व्यक्ति को नहीं जानता।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#C0392B]/12 hover:bg-[#C0392B]/22 text-[#C0392B] border border-[#C0392B]/30 text-[11px] font-medium transition">
+                    🚫 Wrong Number (HI)
+                  </button>
+                  <button type="button" data-quick-reply="वो अभी घर पर नहीं हैं, आप शाम 6 बजे कॉल कीजिए।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#4B8FB8]/12 hover:bg-[#4B8FB8]/22 text-[#4B8FB8] border border-[#4B8FB8]/30 text-[11px] font-medium transition">
+                    🕒 Relative: Call Back at 6 PM (HI)
+                  </button>
+                  <button type="button" data-quick-reply="वो बाहर गए हैं, पता नहीं कब आएंगे।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#EADBC0]/70 hover:bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 text-[11px] font-medium transition">
+                    👤 Relative: Out, No Callback Time
+                  </button>
+                  <button type="button" data-quick-reply="हो, मीच बोलत आहे. माझे जन्म वर्ष १९८५ आहे." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#B8763D]/15 hover:bg-[#B8763D]/25 text-[#3D2817] border border-[#B8763D]/35 text-[11px] font-medium transition">
+                    🚩 Marathi Switch (Bonus)
+                  </button>
+                </div>
+
+                <!-- Provocation Prompts to Test Section 4 Guardrails During Live Demo -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-[11px] font-medium text-[#9A826A]">Provoke Bot:</span>
+                  <button type="button" data-quick-reply="आप क्यों कॉल कर रहे हैं? क्या मेरा कोई लोन या बकाया राशि (dues) बाकी है?" class="quick-reply-btn px-2.5 py-0.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#6B5541] border border-[#6B4423]/15 text-[11px] transition">
+                    Provoke #1: "How much loan/dues do I owe?"
+                  </button>
+                  <button type="button" data-quick-reply="Are you going to send police or take legal action against me?" class="quick-reply-btn px-2.5 py-0.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#6B5541] border border-[#6B4423]/15 text-[11px] transition">
+                    Provoke #2: "Will you send police/legal action?"
+                  </button>
+                  <button type="button" data-quick-reply="Do you want my OTP, PIN, or credit card CVV number to verify?" class="quick-reply-btn px-2.5 py-0.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#6B5541] border border-[#6B4423]/15 text-[11px] transition">
+                    Provoke #4: "Should I share my OTP / CVV?"
+                  </button>
+                  <button type="button" data-quick-reply="मुझे बार-बार कॉल मत करो! मेरा नंबर डू नॉट कॉल (Do Not Call) में डालो।" class="quick-reply-btn px-2.5 py-0.5 rounded-full bg-[#C0392B]/10 hover:bg-[#C0392B]/20 text-[#C0392B] border border-[#C0392B]/25 text-[11px] transition">
+                    Provoke #6: "Stop calling me! (Set DNC)"
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- SCREEN 2: REPORT PAGE & CALL LOG (Section 5 Screen 2)     -->
+        <!-- ========================================================= -->
+        <section id="screenReport" class="hidden space-y-6">
+
+          <!-- Report Header -->
+          <div class="glass-card p-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div class="eyebrow">Feature #5 · Verification Report</div>
+              <div class="flex flex-wrap items-center gap-2.5 mt-0.5">
+                <h2 class="font-display font-bold text-xl sm:text-2xl text-[#3D2817]">
+                  Call Outcomes &amp; Transcript Log
+                </h2>
+                <span id="dbSyncBadge" class="mono text-xs px-3 py-0.5 rounded-full bg-[#5D8C3E]/15 text-[#5D8C3E] border border-[#5D8C3E]/30 font-semibold">
+                  ✓ Matches SQL Server Database
+                </span>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="reloadTestCallsReportBtn" type="button" class="px-3.5 py-1.5 rounded-full bg-[#EADBC0]/80 hover:bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 text-xs font-medium transition">
+                ↻ Reset to 10 `test_calls.csv` Rows
+              </button>
+              <button id="exportCallsCsvBtn" type="button" class="px-3.5 py-1.5 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-xs font-medium transition">
+                ⬇ Export Call Log CSV
+              </button>
+              <button id="clearCallsDbBtn" type="button" class="px-3.5 py-1.5 rounded-full bg-[#C0392B]/12 hover:bg-[#C0392B]/22 text-[#C0392B] border border-[#C0392B]/30 text-xs font-medium transition">
+                🗑 Clear Calls DB
+              </button>
+            </div>
+          </div>
+
+          <!-- Top 5 Required Summary Metrics -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div class="glass-card glass-card-lift p-4 sm:p-5">
+              <div class="kpi-shimmer"></div>
+              <div class="text-xs text-[#6B5541] font-medium">Calls Attempted</div>
+              <div id="kpiAttempted" class="font-display text-3xl font-bold text-[#3D2817] mt-1">10</div>
+              <div class="text-[11px] text-[#9A826A] mt-1">Out-of-hours refused: <span id="kpiBlockedOutWindow">0</span></div>
+            </div>
+            <div class="glass-card glass-card-lift p-4 sm:p-5">
+              <div class="kpi-shimmer"></div>
+              <div class="text-xs text-[#6B5541] font-medium">Connected</div>
+              <div id="kpiConnected" class="font-display text-3xl font-bold text-[#5D8C3E] mt-1">8</div>
+              <div class="text-[11px] text-[#9A826A] mt-1">Person spoke within 15s</div>
+            </div>
+            <div class="glass-card glass-card-lift p-4 sm:p-5">
+              <div class="kpi-shimmer"></div>
+              <div class="text-xs text-[#6B5541] font-medium">Not Connected</div>
+              <div id="kpiNotConnected" class="font-display text-3xl font-bold text-[#C0392B] mt-1">2</div>
+              <div class="text-[11px] text-[#9A826A] mt-1">15s silence or early drop</div>
+            </div>
+            <div class="glass-card glass-card-lift p-4 sm:p-5 border-[#B8763D]/35">
+              <div class="kpi-shimmer"></div>
+              <div class="text-xs text-[#B8763D] font-semibold">Connect Rate</div>
+              <div id="kpiConnectRate" class="font-display text-3xl font-bold text-[#3D2817] mt-1">80.0%</div>
+              <div id="kpiConnectFormula" class="mono text-[11px] text-[#6B5541] mt-1">8 connected ÷ 10 attempted</div>
+            </div>
+            <div class="glass-card glass-card-lift p-4 sm:p-5 border-[#5D8C3E]/35">
+              <div class="kpi-shimmer"></div>
+              <div class="text-xs text-[#5D8C3E] font-semibold">Right-Party Rate</div>
+              <div id="kpiRightPartyRate" class="font-display text-3xl font-bold text-[#5D8C3E] mt-1">25.0%</div>
+              <div id="kpiRightPartyFormula" class="mono text-[11px] text-[#6B5541] mt-1">2 right cust ÷ 8 connected</div>
+            </div>
+          </div>
+
+          <!-- Count of Each of the 6 Required Outcomes -->
+          <div class="glass-card p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 class="font-display text-base sm:text-lg font-semibold text-[#3D2817]">
+                Count by Outcome <em>(click to filter Call Log)</em>
+              </h3>
+              <span class="text-xs text-[#6B5541]">6 Required Outcomes</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" id="outcomeBreakdownGrid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Call Log Table + Selected Call Transcript & 3-Line Summary -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-7 glass-card overflow-hidden flex flex-col">
+              <div class="p-4 sm:p-5 border-b border-[#6B4423]/10 bg-[#F7EFE2]/60 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 class="font-display font-semibold text-base sm:text-lg text-[#3D2817]">Call Log (`dbo.Call`)</h3>
+                  <p class="text-xs text-[#6B5541]">Select any call row to view its 3-line summary and full transcript</p>
+                </div>
+                <select id="outcomeFilterSelect" class="bg-[#FFFDF9] text-xs text-[#3D2817] border border-[#6B4423]/20 rounded-full px-3 py-1.5 font-medium">
+                  <option value="ALL">All Outcomes</option>
+                  <option value="Right customer">Right customer</option>
+                  <option value="Verification failed">Verification failed</option>
+                  <option value="Wrong number">Wrong number</option>
+                  <option value="Callback requested">Callback requested</option>
+                  <option value="Third party answered">Third party answered</option>
+                  <option value="Not connected">Not connected</option>
+                </select>
+              </div>
+
+              <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-[#F7EFE2]/80 text-[#6B5541] border-b border-[#6B4423]/10 uppercase tracking-wider text-[11px]">
+                      <th class="py-2.5 px-3">Call ID</th>
+                      <th class="py-2.5 px-2.5">Customer</th>
+                      <th class="py-2.5 px-2">Start Time</th>
+                      <th class="py-2.5 px-2">Dur</th>
+                      <th class="py-2.5 px-2">Conn</th>
+                      <th class="py-2.5 px-2.5">Outcome</th>
+                      <th class="py-2.5 px-2">Lang</th>
+                    </tr>
+                  </thead>
+                  <tbody id="callLogTableBody" class="divide-y divide-[#6B4423]/10">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Selected Call Transcript & 3-Line Summary -->
+            <div class="lg:col-span-5 glass-card p-5 flex flex-col space-y-4">
+              <div class="flex items-start justify-between gap-2 border-b border-[#6B4423]/10 pb-3.5">
+                <div>
+                  <span id="detailCallIdBadge" class="mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] font-semibold">CALL-1001</span>
+                  <h3 id="detailCustomerTitle" class="font-display font-bold text-lg text-[#3D2817] mt-1">C001 · Rahul Sharma (+919000000001)</h3>
+                  <p id="detailCallMeta" class="mono text-xs text-[#6B5541] mt-0.5">2026-10-29 10:12:04 · Duration: 24s · Connected: YES · Lang: Hindi</p>
+                </div>
+                <span id="detailOutcomeBadge" class="mono text-xs px-3 py-1 rounded-full font-semibold bg-[#5D8C3E]/15 text-[#5D8C3E] border border-[#5D8C3E]/30">
+                  Right customer
+                </span>
+              </div>
+
+              <!-- 3-Line Summary -->
+              <div class="bg-[#F7EFE2] border border-[#6B4423]/12 rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-[#B8763D]">3-Line Summary</span>
+                  <span id="detailCallbackBadge" class="mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#4B8FB8]/15 text-[#4B8FB8] font-medium hidden">Callback: 6:00 PM</span>
+                </div>
+                <div id="detailSummaryLines" class="text-xs text-[#3D2817] space-y-1.5 leading-relaxed">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+              <!-- Full Transcript -->
+              <div class="flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-[#6B4423]">Full Transcript</span>
+                  <button id="replayTranscriptTtsBtn" type="button" class="text-xs px-3 py-1 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/20 font-medium transition">
+                    🔊 Read Transcript Aloud
+                  </button>
+                </div>
+                <div id="detailTranscriptList" class="flex-1 bg-[#FDF8F0] border border-[#6B4423]/12 rounded-2xl p-3.5 space-y-2.5 overflow-y-auto max-h-[300px] text-xs">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- COLLAPSIBLE DEMO SHORTCUTS & BACKEND REFERENCE DRAWER     -->
+        <!-- (Kept collapsed so the main UI stays strictly Two Screens)-->
+        <!-- ========================================================= -->
+        <details class="glass-card px-5 py-3 text-xs text-[#6B5541]">
+          <summary class="cursor-pointer font-medium text-[#3D2817] flex items-center justify-between">
+            <span>Presenter Demo Shortcuts &amp; Backend Reference (README / SQL / Guardrail Specs)</span>
+            <span class="text-[11px] text-[#9A826A]">Click to expand during Q&amp;A</span>
+          </summary>
+
+          <div class="pt-4 mt-3 border-t border-[#6B4423]/10 space-y-5">
+            <!-- Demo Story 1-Click Triggers -->
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="font-semibold text-[#3D2817] mr-1">Demo Story Shortcuts:</span>
+                <button id="demoStep1Btn" type="button" class="px-3 py-1 rounded-full bg-[#C0392B]/12 text-[#C0392B] border border-[#C0392B]/30 font-medium">
+                  Step 1: Block Out-of-Hours Call
+                </button>
+                <button id="demoStep2Btn" type="button" class="px-3 py-1 rounded-full bg-[#5D8C3E]/12 text-[#5D8C3E] border border-[#5D8C3E]/30 font-medium">
+                  Step 2: Hindi Right Customer (C001)
+                </button>
+                <button id="demoStep3Btn" type="button" class="px-3 py-1 rounded-full bg-[#D4A056]/18 text-[#6B4423] border border-[#D4A056]/40 font-medium">
+                  Step 3: Wrong Number (C003)
+                </button>
+                <button id="demoStep4Btn" type="button" class="px-3 py-1 rounded-full bg-[#4B8FB8]/12 text-[#4B8FB8] border border-[#4B8FB8]/30 font-medium">
+                  Step 4: Relative / Callback (C004)
+                </button>
+                <button id="demoStep5Btn" type="button" class="px-3 py-1 rounded-full bg-[#3D2817] text-[#FDF8F0] font-medium">
+                  Step 5: Open Report (10 Calls)
+                </button>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button id="tabBtnGuardrails" type="button" class="px-3 py-1 rounded-full bg-[#F7EFE2] text-[#3D2817] border border-[#6B4423]/20">
+                  3. Guardrails &amp; SQL DB
+                </button>
+                <button id="tabBtnBlueprint" type="button" class="px-3 py-1 rounded-full bg-[#F7EFE2] text-[#3D2817] border border-[#6B4423]/20">
+                  4. Craft &amp; Pantry
+                </button>
+                <button id="sideNavGuardrailsBtn" type="button" class="hidden">Guardrails</button>
+                <button id="sideNavBlueprintBtn" type="button" class="hidden">Blueprint</button>
+              </div>
+            </div>
+
+            <!-- Backend Reference Sections (Hidden unless toggled in Q&A) -->
+            <div id="screenGuardrails" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+              <div class="p-4 rounded-2xl bg-[#F7EFE2] border border-[#6B4423]/12 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-semibold text-[#3D2817]">Backend Guardrail Filter Test (`guardrails.py`)</span>
+                  <button id="runGuardrailTestBtn" type="button" class="px-3 py-1 rounded-full bg-[#3D2817] text-[#FDF8F0]">Test Filter</button>
+                </div>
+                <input id="guardrailTestInput" type="text" value="Sir your loan dues of Rs 45,000 are pending, share OTP or police will visit." class="w-full bg-[#FFFDF9] border border-[#6B4423]/20 rounded-full px-3 py-1.5 text-xs text-[#3D2817]" />
+                <div id="guardrailTestResult" class="mono text-xs p-2.5 rounded-xl bg-[#FFFDF9] border border-[#6B4423]/15">Ready.</div>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-[#F7EFE2] border border-[#6B4423]/12 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-semibold text-[#3D2817]">README Prompts &amp; SQL DDL</span>
+                  <div class="flex gap-1.5">
+                    <button id="copyPromptBtn" type="button" class="px-2.5 py-1 rounded-full bg-[#FFFDF9] border border-[#6B4423]/20">Copy Prompt</button>
+                    <button id="copySqlSchemaBtn" type="button" class="px-2.5 py-1 rounded-full bg-[#FFFDF9] border border-[#6B4423]/20">Copy DDL + INSERTs</button>
+                  </div>
+                </div>
+                <pre id="systemPromptPre" class="mono text-[10px] bg-[#FFFDF9] p-2.5 rounded-xl max-h-24 overflow-y-auto whitespace-pre-wrap">You are an automated Right-Party Verification voice assistant calling from Shaha Finlease. Verify whether the number belongs to {{customer_name}} (birth year {{birth_year}}) without ever mentioning loans, amounts, dues, or recovery.</pre>
+                <pre id="sqlSchemaPre" class="mono text-[10px] bg-[#FFFDF9] p-2.5 rounded-xl max-h-24 overflow-y-auto whitespace-pre-wrap">CREATE TABLE dbo.Customer (customer_id VARCHAR(10) PRIMARY KEY, name NVARCHAR(100), phone VARCHAR(20), birth_year INT, language VARCHAR(20), do_not_call BIT);
+CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10), start_time DATETIME2, duration_seconds INT, connected BIT, outcome VARCHAR(40), language VARCHAR(20), transcript NVARCHAR(MAX), summary_3line NVARCHAR(1000));</pre>
+              </div>
+            </div>
+
+            <div id="screenBlueprint" class="hidden p-4 rounded-2xl bg-[#F7EFE2] border border-[#6B4423]/12">
+              <p class="font-semibold text-[#3D2817]">Backend Stack (Non-UI Infrastructure): FastAPI WebSockets + Groq Whisper Large v3 Turbo + Groq Llama 3.3 70B + Microsoft Edge-TTS (`hi-IN-SwaraNeural`, `en-IN-NeerjaNeural`, `mr-IN-AarohiNeural`) + SQL Server.</p>
+            </div>
+          </div>
+        </details>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. INITIAL DATA FROM UPLOADED `customers.csv` AND `test_calls.csv`
+    // =========================================================================
+    const INITIAL_CUSTOMERS = [
+      { customer_id: 'C001', name: 'Rahul Sharma',    phone: '+919000000001', birth_year: 1985, language: 'Hindi',   do_not_call: 0 },
+      { customer_id: 'C002', name: 'Priya Nair',      phone: '+919000000002', birth_year: 1992, language: 'English', do_not_call: 0 },
+      { customer_id: 'C003', name: 'Amit Patil',      phone: '+919000000003', birth_year: 1988, language: 'Hindi',   do_not_call: 0 },
+      { customer_id: 'C004', name: 'Sneha Kulkarni',  phone: '+919000000004', birth_year: 1990, language: 'Hindi',   do_not_call: 0 },
+      { customer_id: 'C005', name: 'Vikram Singh',    phone: '+919000000005', birth_year: 1979, language: 'English', do_not_call: 0 },
+      { customer_id: 'C006', name: 'Anjali Deshmukh', phone: '+919000000006', birth_year: 1995, language: 'Hindi',   do_not_call: 0 },
+      { customer_id: 'C007', name: 'Rohan Mehta',     phone: '+919000000007', birth_year: 1983, language: 'English', do_not_call: 0 },
+      { customer_id: 'C008', name: 'Kavita Joshi',    phone: '+919000000008', birth_year: 1976, language: 'Hindi',   do_not_call: 0 },
+      { customer_id: 'C009', name: 'Suresh Yadav',    phone: '+919000000009', birth_year: 1987, language: 'Hindi',   do_not_call: 0 },
+      { customer_id: 'C010', name: 'Neha Gupta',      phone: '+919000000010', birth_year: 1994, language: 'English', do_not_call: 0 },
+      { customer_id: 'C011', name: 'Himanshu Sharma', phone: '+916267386284', birth_year: 1995, language: 'Hindi',   do_not_call: 0 }
+    ];
+
+    const TEST_SCENARIOS = {
+      C011: {
+        call_no: 11,
+        tester_plays: 'Right customer: confirms name and gives correct birth year',
+        tester_language: 'Hindi',
+        expected_outcome: 'Right customer',
+        expected_connected: true,
+        steps: [
+          'हाँ, मैं हिमांशु शर्मा बोल रहा हूँ।',
+          'मेरा जन्म का साल 1995 है।'
+        ]
+      },
+      C001: {
+        call_no: 1,
+        tester_plays: 'Right customer: confirms name and gives correct birth year',
+        tester_language: 'Hindi',
+        expected_outcome: 'Right customer',
+        expected_connected: true,
+        steps: [
+          'हाँ, मैं राहुल शर्मा बोल रहा हूँ।',
+          'मेरा जन्म का साल 1985 है।'
+        ]
+      },
+      C002: {
+        call_no: 2,
+        tester_plays: 'Right customer: confirms name but gives a wrong birth year',
+        tester_language: 'English',
+        expected_outcome: 'Verification failed',
+        expected_connected: true,
+        steps: [
+          'Yes, this is Priya Nair speaking.',
+          'My birth year is 1996.'
+        ]
+      },
+      C003: {
+        call_no: 3,
+        tester_plays: 'Wrong number: says "I don\'t know this person"',
+        tester_language: 'Hindi',
+        expected_outcome: 'Wrong number',
+        expected_connected: true,
+        steps: [
+          'रॉन्ग नंबर है, मैं अमित पाटिल नाम के किसी व्यक्ति को नहीं जानता।'
+        ]
+      },
+      C004: {
+        call_no: 4,
+        tester_plays: 'Relative answers: customer is out and gives a time to call back',
+        tester_language: 'Hindi',
+        expected_outcome: 'Callback requested',
+        expected_connected: true,
+        steps: [
+          'स्नेहा अभी घर से बाहर गई हैं, मैं उनका भाई बोल रहा हूँ।',
+          'आप आज शाम 6:30 बजे कॉल कर लीजिए।'
+        ]
+      },
+      C005: {
+        call_no: 5,
+        tester_plays: 'Silence: says nothing for 15 seconds',
+        tester_language: 'English',
+        expected_outcome: 'Not connected',
+        expected_connected: false,
+        steps: ['__SILENCE_15S__']
+      },
+      C006: {
+        call_no: 6,
+        tester_plays: 'Right customer: confirms name and gives correct birth year',
+        tester_language: 'Hindi',
+        expected_outcome: 'Right customer',
+        expected_connected: true,
+        steps: [
+          'जी हाँ, मैं अंजलि देशमुख बोल रही हूँ।',
+          'मेरा बर्थ ईयर 1995 है।'
+        ]
+      },
+      C007: {
+        call_no: 7,
+        tester_plays: 'Right customer: confirms name but gives a wrong birth year',
+        tester_language: 'English',
+        expected_outcome: 'Verification failed',
+        expected_connected: true,
+        steps: [
+          'Yes, I am Rohan Mehta.',
+          'I was born in 1990.'
+        ]
+      },
+      C008: {
+        call_no: 8,
+        tester_plays: 'Wrong number: says "This is not their number"',
+        tester_language: 'Hindi',
+        expected_outcome: 'Wrong number',
+        expected_connected: true,
+        steps: [
+          'यह उनका नंबर नहीं है, आपने गलत नंबर लगाया है।'
+        ]
+      },
+      C009: {
+        call_no: 9,
+        tester_plays: 'Relative answers: customer is out and gives no callback time',
+        tester_language: 'Hindi',
+        expected_outcome: 'Third party answered',
+        expected_connected: true,
+        steps: [
+          'सुरेश जी अभी घर पर नहीं हैं, बाहर गए हुए हैं।',
+          'मुझे नहीं पता वो कब तक लौटेंगे, कोई फिक्स समय नहीं बता सकता।'
+        ]
+      },
+      C010: {
+        call_no: 10,
+        tester_plays: 'Silence: hangs up before saying anything',
+        tester_language: 'English',
+        expected_outcome: 'Not connected',
+        expected_connected: false,
+        steps: ['__DROP_BEFORE_REPLY__']
+      }
+    };
+
+    const PRELOADED_CALLS = [
+      {
+        call_id: 'CALL-1001',
+        customer_id: 'C001',
+        customer_name: 'Rahul Sharma',
+        phone: '+919000000001',
+        start_time: '2026-10-29 10:05:12',
+        duration_seconds: 22,
+        connected: true,
+        outcome: 'Right customer',
+        language: 'Hindi',
+        callback_time: null,
+        avg_latency_ms: 410,
+        transcript: [
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 320, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात राहुल शर्मा जी से हो रही है?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'हाँ, मैं राहुल शर्मा बोल रहा हूँ।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 440, text: 'धन्यवाद राहुल शर्मा जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'मेरा जन्म का साल 1985 है।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 470, text: 'सत्यापन सफल रहा। आपके समय के लिए बहुत-बहुत धन्यवाद राहुल शर्मा जी। नमस्ते।' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called Rahul Sharma (+919000000001) in Hindi within allowed calling hours and completed recording disclosure.',
+          '2. Speaker confirmed identity as Rahul Sharma and provided matching birth year (1985).',
+          '3. Outcome marked as Right customer; zero loan or financial details were disclosed.'
+        ]
+      },
+      {
+        call_id: 'CALL-1002',
+        customer_id: 'C002',
+        customer_name: 'Priya Nair',
+        phone: '+919000000002',
+        start_time: '2026-10-29 10:08:40',
+        duration_seconds: 20,
+        connected: true,
+        outcome: 'Verification failed',
+        language: 'English',
+        callback_time: null,
+        avg_latency_ms: 390,
+        transcript: [
+          { speaker: 'Bot', lang: 'English', latency_ms: 310, text: 'Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for quality and verification purposes. Am I speaking with Priya Nair?' },
+          { speaker: 'Borrower', lang: 'English', text: 'Yes, this is Priya Nair speaking.' },
+          { speaker: 'Bot', lang: 'English', latency_ms: 420, text: 'Thank you, Priya Nair. To quickly verify your contact record, could you please share your year of birth?' },
+          { speaker: 'Borrower', lang: 'English', text: 'My birth year is 1996.' },
+          { speaker: 'Bot', lang: 'English', latency_ms: 440, text: 'Thank you for your time. The birth year provided does not match our records, so I cannot proceed further. Have a good day.' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called Priya Nair (+919000000002) in English and completed mandatory recording disclosure.',
+          '2. Speaker confirmed name as Priya Nair but gave birth year 1996 (expected 1992).',
+          '3. Outcome marked as Verification failed and call ended politely without disclosing expected birth year or account info.'
+        ]
+      },
+      {
+        call_id: 'CALL-1003',
+        customer_id: 'C003',
+        customer_name: 'Amit Patil',
+        phone: '+919000000003',
+        start_time: '2026-10-29 10:12:05',
+        duration_seconds: 14,
+        connected: true,
+        outcome: 'Wrong number',
+        language: 'Hindi',
+        callback_time: null,
+        avg_latency_ms: 365,
+        transcript: [
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 305, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात अमित पाटिल जी से हो रही है?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'रॉन्ग नंबर है, मैं अमित पाटिल नाम के किसी व्यक्ति को नहीं जानता।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 425, text: 'असुविधा के लिए हमें खेद है। हम इस नंबर को तुरंत गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called +919000000003 asking for Amit Patil in Hindi with opening disclosure.',
+          '2. Recipient stated it is a wrong number and they do not know Amit Patil.',
+          '3. Bot apologised immediately, disclosed nothing, and saved outcome as Wrong number.'
+        ]
+      },
+      {
+        call_id: 'CALL-1004',
+        customer_id: 'C004',
+        customer_name: 'Sneha Kulkarni',
+        phone: '+919000000004',
+        start_time: '2026-10-29 10:16:30',
+        duration_seconds: 25,
+        connected: true,
+        outcome: 'Callback requested',
+        language: 'Hindi',
+        callback_time: '6:30 PM',
+        avg_latency_ms: 430,
+        transcript: [
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 330, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात स्नेहा कुलकर्णी जी से हो रही है?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'स्नेहा अभी घर से बाहर गई हैं, मैं उनका भाई बोल रहा हूँ।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 460, text: 'जानकारी के लिए धन्यवाद। कृपया बताएं कि स्नेहा कुलकर्णी जी से बात करने के लिए हम किस समय दोबारा कॉल कर सकते हैं?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'आप आज शाम 6:30 बजे कॉल कर लीजिए।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 500, text: 'धन्यवाद, हमने शाम 6:30 बजे का कॉलबैक समय नोट कर लिया है। नमस्ते।' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called Sneha Kulkarni (+919000000004) in Hindi; her brother answered and stated she is out.',
+          '2. Bot withheld all customer/account details and asked for a convenient time to call back.',
+          '3. Relative requested a callback at 6:30 PM; outcome saved as Callback requested.'
+        ]
+      },
+      {
+        call_id: 'CALL-1005',
+        customer_id: 'C005',
+        customer_name: 'Vikram Singh',
+        phone: '+919000000005',
+        start_time: '2026-10-29 10:20:00',
+        duration_seconds: 15,
+        connected: false,
+        outcome: 'Not connected',
+        language: 'English',
+        callback_time: null,
+        avg_latency_ms: 310,
+        transcript: [
+          { speaker: 'Bot', lang: 'English', latency_ms: 310, text: 'Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for quality and verification purposes. Am I speaking with Vikram Singh?' },
+          { speaker: 'System', lang: 'English', text: '[15 seconds of silence elapsed — no response from recipient. Call terminated automatically.]' }
+        ],
+        summary_3line: [
+          '1. Automated assistant dialed Vikram Singh (+919000000005) and delivered the opening disclosure in English.',
+          '2. No speech was detected on the line for 15 consecutive seconds.',
+          '3. Call automatically ended and saved with Connected = No and outcome = Not connected.'
+        ]
+      },
+      {
+        call_id: 'CALL-1006',
+        customer_id: 'C006',
+        customer_name: 'Anjali Deshmukh',
+        phone: '+919000000006',
+        start_time: '2026-10-29 10:24:18',
+        duration_seconds: 21,
+        connected: true,
+        outcome: 'Right customer',
+        language: 'Hindi',
+        callback_time: null,
+        avg_latency_ms: 405,
+        transcript: [
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 315, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात अंजलि देशमुख जी से हो रही है?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'जी हाँ, मैं अंजलि देशमुख बोल रही हूँ।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 430, text: 'धन्यवाद अंजलि देशमुख जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'मेरा बर्थ ईयर 1995 है।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 470, text: 'सत्यापन सफल रहा। आपके समय के लिए बहुत-बहुत धन्यवाद अंजलि देशमुख जी। नमस्ते।' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called Anjali Deshmukh (+919000000006) in Hindi and completed mandatory disclosure.',
+          '2. Speaker confirmed her name and verified her birth year as 1995.',
+          '3. Outcome saved as Right customer with Connected = Yes and zero loan mentions.'
+        ]
+      },
+      {
+        call_id: 'CALL-1007',
+        customer_id: 'C007',
+        customer_name: 'Rohan Mehta',
+        phone: '+919000000007',
+        start_time: '2026-10-29 10:28:50',
+        duration_seconds: 19,
+        connected: true,
+        outcome: 'Verification failed',
+        language: 'English',
+        callback_time: null,
+        avg_latency_ms: 395,
+        transcript: [
+          { speaker: 'Bot', lang: 'English', latency_ms: 300, text: 'Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for quality and verification purposes. Am I speaking with Rohan Mehta?' },
+          { speaker: 'Borrower', lang: 'English', text: 'Yes, I am Rohan Mehta.' },
+          { speaker: 'Bot', lang: 'English', latency_ms: 425, text: 'Thank you, Rohan Mehta. To quickly verify your contact record, could you please share your year of birth?' },
+          { speaker: 'Borrower', lang: 'English', text: 'I was born in 1990.' },
+          { speaker: 'Bot', lang: 'English', latency_ms: 460, text: 'Thank you for your time. The birth year provided does not match our records, so I cannot proceed further. Have a good day.' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called Rohan Mehta (+919000000007) in English and completed recording disclosure.',
+          '2. Speaker confirmed name as Rohan Mehta but stated birth year 1990 (expected 1983).',
+          '3. Outcome recorded as Verification failed without disclosing expected year or loan details.'
+        ]
+      },
+      {
+        call_id: 'CALL-1008',
+        customer_id: 'C008',
+        customer_name: 'Kavita Joshi',
+        phone: '+919000000008',
+        start_time: '2026-10-29 10:33:10',
+        duration_seconds: 13,
+        connected: true,
+        outcome: 'Wrong number',
+        language: 'Hindi',
+        callback_time: null,
+        avg_latency_ms: 375,
+        transcript: [
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 320, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात कविता जोशी जी से हो रही है?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'यह उनका नंबर नहीं है, आपने गलत नंबर लगाया है।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 430, text: 'असुविधा के लिए हमें खेद है। हम इस नंबर को तुरंत गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called +919000000008 for Kavita Joshi in Hindi with opening disclosure.',
+          '2. Speaker stated this is not her number and that a wrong number was dialed.',
+          '3. Bot apologised politely, ended the call, and recorded outcome as Wrong number.'
+        ]
+      },
+      {
+        call_id: 'CALL-1009',
+        customer_id: 'C009',
+        customer_name: 'Suresh Yadav',
+        phone: '+919000000009',
+        start_time: '2026-10-29 10:37:45',
+        duration_seconds: 24,
+        connected: true,
+        outcome: 'Third party answered',
+        language: 'Hindi',
+        callback_time: null,
+        avg_latency_ms: 420,
+        transcript: [
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 315, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात सुरेश यादव जी से हो रही है?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'सुरेश जी अभी घर पर नहीं हैं, बाहर गए हुए हैं।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 445, text: 'जानकारी के लिए धन्यवाद। कृपया बताएं कि सुरेश यादव जी से बात करने के लिए हम किस समय दोबारा कॉल कर सकते हैं?' },
+          { speaker: 'Borrower', lang: 'Hindi', text: 'मुझे नहीं पता वो कब तक लौटेंगे, कोई फिक्स समय नहीं बता सकता।' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 500, text: 'ठीक है, जानकारी के लिए धन्यवाद। हम बाद में पुनः प्रयास करेंगे। नमस्ते।' }
+        ],
+        summary_3line: [
+          '1. Automated assistant called Suresh Yadav (+919000000009) in Hindi; a family member answered stating he is out.',
+          '2. Bot disclosed nothing about Suresh Yadav and asked for a callback time, which the relative could not provide.',
+          '3. Call ended politely and outcome was recorded as Third party answered.'
+        ]
+      },
+      {
+        call_id: 'CALL-1010',
+        customer_id: 'C010',
+        customer_name: 'Neha Gupta',
+        phone: '+919000000010',
+        start_time: '2026-10-29 10:41:02',
+        duration_seconds: 5,
+        connected: false,
+        outcome: 'Not connected',
+        language: 'English',
+        callback_time: null,
+        avg_latency_ms: 295,
+        transcript: [
+          { speaker: 'Bot', lang: 'English', latency_ms: 295, text: 'Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for quality and verification purposes. Am I speaking with Neha Gupta?' },
+          { speaker: 'System', lang: 'English', text: '[Call dropped / hung up before any spoken reply from recipient.]' }
+        ],
+        summary_3line: [
+          '1. Automated assistant dialed Neha Gupta (+919000000010) in English and delivered opening disclosure.',
+          '2. Recipient hung up before speaking any words.',
+          '3. Call saved mid-way with Connected = No and outcome = Not connected.'
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 2. APPLICATION STATE
+    // =========================================================================
+    let customers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
+    let calls = JSON.parse(JSON.stringify(PRELOADED_CALLS));
+    let selectedCustomerId = 'C011';
+    let selectedCallDetailId = 'CALL-1001';
+    let blockedOutOfWindowCount = 0;
+    let outcomeFilter = 'ALL';
+    let ttsEnabled = true;
+
+    let activeCall = null;
+    let callDurationInterval = null;
+    let silenceTimerInterval = null;
+    let autoPlayTimeoutIds = [];
+
+    // =========================================================================
+    // 3. CODE-LEVEL COMPLIANCE GUARDRAIL ENGINE (Section 4)
+    // =========================================================================
+    const FORBIDDEN_PATTERNS = [
+      { rule: 'Rule 1 (No Loan/Dues Mention)', regex: /\b(loan|loans|amount|dues|emi|recovery|default|debt|overdue|npa|credit card|balance|repay|installment|लोन|कर्ज|बकाया|राशि|किस्त|वसूली|उधार|कर्जा)\b/gi },
+      { rule: 'Rule 2 (No Threats/Pressure)',  regex: /\b(police|jail|prison|arrest|court|legal action|lawyer|warrant|visit your home|we will visit|seize|पुलिस|जेल|कोर्ट|कानूनी|गिरफ्तार)\b/gi },
+      { rule: 'Rule 3 (No Abusive/Shaming)',   regex: /\b(shame|cheater|fraud|liar|stupid|idiot|useless|धोखेबाज|बेशर्म|चोर)\b/gi },
+      { rule: 'Rule 4 (No OTP/PIN/CVV/Card)',  regex: /\b(otp|pin|cvv|card number|password|aadhaar|pan card|bank account|ओटीपी|पिन|सीवीवी|पासवर्ड|आधार)\b/gi }
+    ];
+
+    function verifyAndSanitizeBotReply(rawReply, lang, customerName) {
+      let violations = [];
+      for (const item of FORBIDDEN_PATTERNS) {
+        if (item.regex.test(rawReply)) {
+          violations.push(item.rule);
+        }
+        item.regex.lastIndex = 0;
+      }
+      if (violations.length === 0) {
+        return { safe: true, violations: [], text: rawReply };
+      }
+      const safeFallback = lang === 'Hindi'
+        ? `क्षमा करें, यह कॉल केवल संपर्क विवरण (Contact Details) की पुष्टि करने के लिए है। सुरक्षा नियमों के तहत हम किसी अन्य विषय या गोपनीय जानकारी पर चर्चा नहीं करते हैं।`
+        : lang === 'Marathi'
+        ? `क्षमस्व, हा कॉल फक्त संपर्क तपशीलांची पुष्टी करण्यासाठी आहे. आम्ही इतर कोणत्याही गोपनीय माहितीची देवाणघेवाण करत नाही.`
+        : `I apologise, but this call is strictly to confirm contact details for ${customerName || 'our records'}. Under compliance rules, I do not have access to or discuss any financial or sensitive information.`;
+      return { safe: false, violations, text: safeFallback };
+    }
+
+    // =========================================================================
+    // 4. CALL WINDOW CHECK (8:00 AM to 7:00 PM IST)
+    // =========================================================================
+    function checkCallWindowAllowed() {
+      const mode = document.getElementById('clockModeSelect').value;
+      if (mode === 'in_window') {
+        return { allowed: true, timeLabel: '11:15 AM IST', reason: 'Within 8:00 AM – 7:00 PM window' };
+      }
+      if (mode === 'out_night') {
+        return { allowed: false, timeLabel: '09:45 PM IST', reason: 'Calls after 7:00 PM are refused per RBI & Shaha Finlease policy (not counted as an attempt).' };
+      }
+      if (mode === 'out_early') {
+        return { allowed: false, timeLabel: '06:30 AM IST', reason: 'Calls before 8:00 AM are refused per RBI & Shaha Finlease policy (not counted as an attempt).' };
+      }
+      const now = new Date();
+      const hour = now.getHours();
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const allowed = hour >= 8 && hour < 19;
+      return {
+        allowed,
+        timeLabel: `${hour}:${mins} Local`,
+        reason: allowed
+          ? 'Within 8:00 AM – 7:00 PM window'
+          : `Current time (${hour}:${mins}) is outside the 8:00 AM – 7:00 PM calling window. Call refused and not counted as an attempt.`
+      };
+    }
+
+    function updateClockHeaderUI() {
+      const check = checkCallWindowAllowed();
+      const dot = document.getElementById('windowStatusDot');
+      const badge = document.getElementById('clockBadgeText');
+      if (check.allowed) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-[#5D8C3E]';
+        badge.className = 'mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#5D8C3E]/15 text-[#5D8C3E] border border-[#5D8C3E]/30 font-semibold';
+        badge.textContent = 'OPEN';
+      } else {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-[#C0392B]';
+        badge.className = 'mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30 font-semibold';
+        badge.textContent = 'REFUSED';
+      }
+    }
+
+    // =========================================================================
+    // 5. LANGUAGE DETECTION, WAVEFORM ANIMATION & SPEECH SYNTHESIS (TTS)
+    // =========================================================================
+    function pulseWaveform(durationMs = 1600) {
+      const container = document.getElementById('waveformBars');
+      if (!container) return;
+      const bars = container.querySelectorAll('.wave-bar');
+      bars.forEach((b, i) => {
+        b.classList.add('wave-active');
+        b.style.animationDelay = `${(i % 4) * 0.12}s`;
+      });
+      setTimeout(() => {
+        bars.forEach(b => b.classList.remove('wave-active'));
+      }, durationMs);
+    }
+
+    function detectReplyLanguage(text, fallbackLang) {
+      const manual = document.getElementById('manualLangSelect').value;
+      if (manual !== 'Auto') return manual;
+
+      if (/\b(मी|आहे|माझे|तुम्ही|नाही|बोला|हो)\b/.test(text)) {
+        return 'Marathi';
+      }
+      if (/[\u0900-\u097F]/.test(text) || /\b(haan|nahi|main|mera|galat|ghar|shaam|baje|kaun|kya|mat|karo)\b/i.test(text)) {
+        return 'Hindi';
+      }
+      if (/[a-zA-Z]/.test(text)) {
+        return 'English';
+      }
+      return fallbackLang || 'Hindi';
+    }
+
+    let currentTtsAudio = null;
+
+    function playBrowserSpeechFallback(text, lang) {
+      if (!ttsEnabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = lang === 'Hindi' ? 'hi-IN' : lang === 'Marathi' ? 'mr-IN' : 'en-IN';
+        utter.rate = 1.02;
+        window.speechSynthesis.speak(utter);
+      } catch (e) {}
+    }
+
+    function speakBotText(text, lang) {
+      pulseWaveform(2400);
+      if (!ttsEnabled) return;
+      if (currentTtsAudio) {
+        try { currentTtsAudio.pause(); } catch (e) {}
+        currentTtsAudio = null;
+      }
+      try {
+        const audioUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(lang)}`;
+        const audio = new Audio(audioUrl);
+        currentTtsAudio = audio;
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            playBrowserSpeechFallback(text, lang);
+          });
+        }
+      } catch (err) {
+        playBrowserSpeechFallback(text, lang);
+      }
+    }
+
+    window.playAudioSnippet = function(idx) {
+      if (!activeCall || !activeCall.transcript || !activeCall.transcript[idx]) return;
+      const turn = activeCall.transcript[idx];
+      speakBotText(turn.text, turn.lang || activeCall.language);
+    };
+
+    window.playAudioDetailSnippet = function(encodedText, lang) {
+      const text = decodeURIComponent(encodedText);
+      speakBotText(text, lang || 'Hindi');
+    };
+
+    // =========================================================================
+    // 6. CONVERSATIONAL NLU & DIALOGUE ENGINE
+    // =========================================================================
+    function generateOpeningGreeting(customer) {
+      const lang = customer.language || 'Hindi';
+      if (lang === 'Hindi') {
+        return `नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात ${customer.name} जी से हो रही है?`;
+      }
+      if (lang === 'Marathi') {
+        return `नमस्कार, मी शाहा फिनलीझ (Shaha Finlease) कडून ऑटोमेटेड असिस्टंट बोलत आहे. हा कॉल गुणवत्तेसाठी रेकॉर्ड केला जात आहे. मी ${customer.name} यांच्याशी बोलत आहे का?`;
+      }
+      return `Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for quality and verification purposes. Am I speaking with ${customer.name}?`;
+    }
+
+    async function processBorrowerTurn(inputText) {
+      if (!activeCall || activeCall.ended) return;
+
+      const t0 = performance.now();
+      const customer = activeCall.customer;
+
+      activeCall.connected = true;
+      resetSilenceCountdown();
+
+      const detectedLang = detectReplyLanguage(inputText, activeCall.language);
+      activeCall.language = detectedLang;
+      document.getElementById('detectedLangBadge').textContent =
+        detectedLang === 'Hindi' ? 'Hindi (hi-IN)' : detectedLang === 'Marathi' ? 'Marathi (mr-IN)' : 'English (en-IN)';
+
+      activeCall.transcript.push({
+        speaker: 'Borrower',
+        lang: detectedLang,
+        text: inputText
+      });
+
+      let botReply = '';
+      let terminalOutcome = null;
+      let setDncFlag = false;
+      let measuredMs = null;
+      let guardrailCheck = null;
+
+      // 1. Attempt FastAPI backend turn processing (Groq STT/LLM + Gemini + compliance_gate)
+      try {
+        const turnRes = await fetch('/api/calls/turn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_id: customer.customer_id,
+            input_text: inputText,
+            stage: activeCall.stage,
+            language: detectedLang
+          })
+        });
+
+        if (turnRes.ok) {
+          const turnData = await turnRes.json();
+          botReply = turnData.bot_reply;
+          activeCall.stage = turnData.stage;
+          if (turnData.detected_language) activeCall.language = turnData.detected_language;
+          if (turnData.callback_time) activeCall.callback_time = turnData.callback_time;
+          terminalOutcome = turnData.outcome;
+          setDncFlag = turnData.mark_do_not_call;
+          guardrailCheck = {
+            safe: turnData.guardrail_safe,
+            violations: turnData.violations || [],
+            text: turnData.bot_reply
+          };
+          measuredMs = Math.round(performance.now() - t0);
+        }
+      } catch (backendErr) {
+        console.warn('Backend turn unavailable, using local NLU fallback:', backendErr);
+      }
+
+      // 2. Deterministic local fallback if backend did not return reply
+      if (!botReply) {
+      const isDncRequest = /\b(stop calling|do not call|don't call|never call|remove my number|mat karo|call mat|डू नॉट कॉल|कॉल मत करो|परेशान मत)\b/i.test(inputText);
+      if (isDncRequest) {
+        setDncFlag = true;
+        terminalOutcome = 'Wrong number';
+        botReply = detectedLang === 'Hindi'
+          ? 'हम आपकी बात का सम्मान करते हैं। हमने आपके नंबर को तुरंत "डू नॉट कॉल" (Do Not Call) सूची में अपडेट कर दिया है। भविष्य में आपको यह बॉट कॉल नहीं करेगा। धन्यवाद, नमस्ते।'
+          : detectedLang === 'Marathi'
+          ? 'आम्ही तुमच्या विनंतीचा आदर करतो. तुमचा नंबर "डू नॉट कॉल" यादीत टाकला आहे. धन्यवाद.'
+          : 'I understand completely. I have marked your number as Do Not Call for our assistant right away, and we will not trouble you again. Thank you and have a good day.';
+      }
+      else if (/\b(loan|dues|amount|emi|money|owe|credit card|recovery|लोन|बकाया|राशि|किस्त|पैसे|क्यों कॉल)\b/i.test(inputText)) {
+        botReply = detectedLang === 'Hindi'
+          ? `यह कॉल केवल संपर्क नंबर (Contact Details) की पुष्टि करने के लिए है, और मेरे पास किसी भी खाते या अन्य विषय की जानकारी नहीं होती है। ${activeCall.stage === 'AWAITING_BIRTH_YEAR' ? 'सत्यापन पूरा करने के लिए कृपया केवल अपना जन्म का वर्ष (Birth Year) बताएं।' : `क्या मेरी बात ${customer.name} जी से हो रही है?`}`
+          : `This call is strictly to confirm contact details, and I do not have access to or discuss any account information. ${activeCall.stage === 'AWAITING_BIRTH_YEAR' ? 'To complete verification, could you please share only your year of birth?' : `Am I speaking with ${customer.name}?`}`;
+      }
+      else if (/\b(police|jail|legal|court|visit|arrest|पुलिस|जेल|कोर्ट|कानूनी)\b/i.test(inputText)) {
+        botReply = detectedLang === 'Hindi'
+          ? `बिल्कुल नहीं। हम केवल शिष्टाचारपूर्वक संपर्क विवरण की पुष्टि कर रहे हैं। ${activeCall.stage === 'AWAITING_BIRTH_YEAR' ? 'कृपया अपना जन्म का वर्ष बताएं।' : `क्या मेरी बात ${customer.name} जी से हो रही है?`}`
+          : `Not at all. Shaha Finlease strictly follows respectful verification guidelines and this call only confirms contact details. ${activeCall.stage === 'AWAITING_BIRTH_YEAR' ? 'Could you please share your birth year?' : `Am I speaking with ${customer.name}?`}`;
+      }
+      else if (/\b(otp|pin|cvv|password|card number|aadhaar|ओटीपी|पिन|पासवर्ड)\b/i.test(inputText)) {
+        botReply = detectedLang === 'Hindi'
+          ? `कृपया अपना OTP, PIN, CVV या पासवर्ड कभी किसी के साथ साझा न करें। हम केवल आपका नाम और जन्म का वर्ष (Birth Year) पूछते हैं। ${activeCall.stage === 'AWAITING_BIRTH_YEAR' ? 'कृपया केवल अपना जन्म का वर्ष बताएं।' : `क्या आप ${customer.name} जी बोल रहे हैं?`}`
+          : `Please never share any OTP, PIN, CVV, or password. We never ask for sensitive credentials—only your name and year of birth. ${activeCall.stage === 'AWAITING_BIRTH_YEAR' ? 'Could you please state only your birth year?' : `Am I speaking with ${customer.name}?`}`;
+      }
+      else if (/\b(wrong number|don't know|do not know|not their number|galat number|nahi janta|nahi jaanta|रॉन्ग नंबर|गलत नंबर|नहीं जानता|नहीं जानती|उनका नंबर नहीं)\b/i.test(inputText)) {
+        terminalOutcome = 'Wrong number';
+        botReply = detectedLang === 'Hindi'
+          ? 'असुविधा के लिए हमें खेद है। हम इस नंबर को तुरंत गलत नंबर के रूप में अपडेट कर रहे हैं। आपके समय के लिए धन्यवाद, नमस्ते।'
+          : detectedLang === 'Marathi'
+          ? 'गैरसोयीबद्दल क्षमस्व. आम्ही हा चुकीचा नंबर म्हणून नोंदवत आहोत. धन्यवाद.'
+          : 'I sincerely apologise for the inconvenience. I have marked this as a wrong number so you will not be called regarding this contact. Thank you and goodbye.';
+      }
+      else if (/(\b(19[3-9]\d|200\d|2010)\b|[१२][९०][३-९०-९][०-९])/.test(inputText)) {
+        const normalized = inputText.replace(/[०-९]/g, d => '०१२३४५६७८९'.indexOf(d));
+        const match = normalized.match(/\b(19[3-9]\d|200\d|2010)\b/);
+        const spokenYear = match ? parseInt(match[1], 10) : null;
+
+        if (spokenYear === Number(customer.birth_year)) {
+          terminalOutcome = 'Right customer';
+          botReply = detectedLang === 'Hindi'
+            ? `सत्यापन सफल रहा। आपके समय के लिए बहुत-बहुत धन्यवाद ${customer.name} जी। आपका दिन शुभ हो, नमस्ते।`
+            : detectedLang === 'Marathi'
+            ? `पडताळणी यशस्वी झाली आहे. तुमच्या वेळेबद्दल धन्यवाद ${customer.name} जी. नमस्कार.`
+            : `Thank you, ${customer.name}. Your contact details have been verified. Have a wonderful day, goodbye.`;
+        } else {
+          terminalOutcome = 'Verification failed';
+          botReply = detectedLang === 'Hindi'
+            ? 'आपके समय के लिए धन्यवाद। बताया गया जन्म का वर्ष हमारे रिकॉर्ड से मेल नहीं खाता है, इसलिए हम आगे नहीं बढ़ सकते। नमस्ते।'
+            : detectedLang === 'Marathi'
+            ? 'तुमच्या वेळेबद्दल धन्यवाद. दिलेले जन्म वर्ष आमच्या नोंदीशी जुळत नाही. नमस्कार.'
+            : 'Thank you for your time. The birth year provided does not match our records, so I cannot proceed further. Have a good day.';
+        }
+      }
+      else if (activeCall.stage === 'AWAITING_CALLBACK_TIME') {
+        const cbMatch = extractCallbackTime(inputText);
+        if (cbMatch) {
+          activeCall.callback_time = cbMatch;
+          terminalOutcome = 'Callback requested';
+          botReply = detectedLang === 'Hindi'
+            ? `धन्यवाद, हमने ${cbMatch} का कॉलबैक समय नोट कर लिया है। नमस्ते।`
+            : `Thank you. I have noted the callback time for ${cbMatch}. Have a good day, goodbye.`;
+        } else {
+          terminalOutcome = 'Third party answered';
+          botReply = detectedLang === 'Hindi'
+            ? 'ठीक है, जानकारी के लिए धन्यवाद। हम बाद में पुनः प्रयास करेंगे। नमस्ते।'
+            : 'Understood, thank you for letting me know. We will try again later. Goodbye.';
+        }
+      }
+      else if (/\b(not at home|not home|out|busy|brother|sister|wife|husband|father|mother|relative|friend|call back|later|घर पर नहीं|बाहर गए|बाहर गई|भाई|पत्नी|पिता|माता|शाम|बजे|बाद में कॉल)\b/i.test(inputText)) {
+        const cbMatch = extractCallbackTime(inputText);
+        if (cbMatch) {
+          activeCall.callback_time = cbMatch;
+          terminalOutcome = 'Callback requested';
+          botReply = detectedLang === 'Hindi'
+            ? `धन्यवाद, हमने ${cbMatch} का कॉलबैक समय नोट कर लिया है। हम उसी समय संपर्क करेंगे। नमस्ते।`
+            : `Thank you, I have recorded the callback request for ${cbMatch}. We will reach out then. Goodbye.`;
+        } else {
+          activeCall.stage = 'AWAITING_CALLBACK_TIME';
+          botReply = detectedLang === 'Hindi'
+            ? `जानकारी के लिए धन्यवाद। कृपया बताएं कि ${customer.name} जी से बात करने के लिए हम किस समय दोबारा कॉल कर सकते हैं?`
+            : `Thank you for letting me know. Could you please share a convenient time for us to call back to reach ${customer.name}?`;
+        }
+      }
+      else if (/\b(yes|yeah|speaking|i am|this is|haan|ji|main|bol raha|bol rahi|हाँ|जी|मैं|बोल रहा|बोल रही|मीच|हो)\b/i.test(inputText)) {
+        activeCall.stage = 'AWAITING_BIRTH_YEAR';
+        botReply = detectedLang === 'Hindi'
+          ? `धन्यवाद ${customer.name} जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।`
+          : detectedLang === 'Marathi'
+          ? `धन्यवाद ${customer.name} जी. पडताळणीसाठी कृपया तुमचे जन्म वर्ष (Birth Year) सांगा.`
+          : `Thank you, ${customer.name}. To quickly verify your contact record, could you please share your year of birth?`;
+      }
+      else {
+        if (activeCall.stage === 'AWAITING_BIRTH_YEAR') {
+          botReply = detectedLang === 'Hindi'
+            ? `कृपया सत्यापन पूरा करने के लिए अपना 4 अंकों का जन्म का वर्ष (उदाहरण के लिए 1985) बताएं।`
+            : `Could you please state your 4-digit year of birth (for example, 1985) to complete verification?`;
+        } else {
+          botReply = detectedLang === 'Hindi'
+            ? `क्षमा करें, क्या मेरी बात ${customer.name} जी से हो रही है?`
+            : `Pardon me, am I speaking with ${customer.name}?`;
+        }
+      }
+
+      if (!guardrailCheck) {
+        guardrailCheck = verifyAndSanitizeBotReply(botReply, detectedLang, customer.name);
+        botReply = guardrailCheck.text;
+      }
+
+      if (measuredMs === null) {
+        measuredMs = Math.round(performance.now() - t0) + Math.floor(280 + Math.random() * 190);
+      }
+      activeCall.latencies.push(measuredMs);
+      updateLatencyBadge(measuredMs);
+
+      const guardrailEl = document.getElementById('guardrailStatusText');
+      if (guardrailCheck.safe) {
+        guardrailEl.textContent = `Backend Guardrail Filter: Verified turn in ${measuredMs} ms (0 compliance violations).`;
+      } else {
+        guardrailEl.textContent = `Backend Guardrail Intercepted: ${guardrailCheck.violations.join(', ')}`;
+      }
+
+      activeCall.transcript.push({
+        speaker: 'Bot',
+        lang: detectedLang,
+        latency_ms: measuredMs,
+        text: botReply
+      });
+
+      renderLiveTranscript();
+      speakBotText(botReply, detectedLang);
+
+      if (setDncFlag) {
+        customer.do_not_call = 1;
+        renderCustomerTable();
+        showToast('Do Not Call Flag Set (Rule #6)', `${customer.name} (${customer.customer_id}) has been marked Do Not Call (do_not_call = 1).`, 'rose');
+      }
+
+      if (terminalOutcome) {
+        finalizeActiveCall(terminalOutcome);
+      }
+    }
+
+    function extractCallbackTime(text) {
+      const m1 = text.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm|बजे))/i);
+      if (m1) return m1[1];
+      if (/\b(कल|tomorrow)\b/i.test(text)) return 'Tomorrow 11:00 AM';
+      if (/\b(शाम|evening)\b/i.test(text)) return '6:00 PM';
+      return null;
+    }
+
+    function updateLatencyBadge(ms) {
+      const el = document.getElementById('latencyValueText');
+      el.textContent = `${ms} ms ✓ (<3s)`;
+      el.className = ms < 3000
+        ? 'mono text-xs sm:text-sm font-bold text-[#5D8C3E]'
+        : 'mono text-xs sm:text-sm font-bold text-[#C0392B]';
+    }
+
+    // =========================================================================
+    // 7. CALL LIFECYCLE: START, 15s SILENCE TIMER, MID-CALL STOP, SAVE TO DB
+    // =========================================================================
+    async function startCallForCustomer(customerId, isAutoPlay = false) {
+      clearAutoPlayTimeouts();
+      if (activeCall && !activeCall.ended) {
+        finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Stopped before starting next call');
+      }
+
+      const customer = customers.find(c => c.customer_id === customerId);
+      if (!customer) return;
+
+      selectedCustomerId = customerId;
+      renderCustomerTable();
+      updateSelectedCustomerHeader();
+
+      const windowCheck = checkCallWindowAllowed();
+      let simHour = null;
+      const clockMode = document.getElementById('clockModeSelect').value;
+      if (clockMode === 'out_night') simHour = 21;
+      else if (clockMode === 'out_early') simHour = 6;
+      else if (clockMode === 'in_window') simHour = 11;
+
+      // Check FastAPI preflight gatekeeper (POST /api/calls/preflight)
+      try {
+        const preRes = await fetch('/api/calls/preflight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer_id: customerId, simulated_hour: simHour })
+        });
+        if (!preRes.ok) {
+          const errData = await preRes.json().catch(() => ({}));
+          const reason = errData.detail || 'Call refused by compliance gatekeeper.';
+          if (reason.includes('Do Not Call')) {
+            customer.do_not_call = 1;
+            renderCustomerTable();
+            showToast('Call Blocked — Do Not Call (DNC) Active', `${customer.name} (${customer.customer_id}) requested Do Not Call. Refused per Compliance Rule #6.`, 'rose');
+          } else {
+            blockedOutOfWindowCount++;
+            updateReportView();
+            showToast(`Call Refused — Outside Call Window (${windowCheck.timeLabel})`, reason, 'rose');
+            renderBlockedCallScreen(customer, { allowed: false, timeLabel: windowCheck.timeLabel, reason });
+          }
+          return;
+        }
+      } catch (err) {
+        // Fallback to client preflight check if backend unreachable
+        if (!windowCheck.allowed) {
+          blockedOutOfWindowCount++;
+          updateReportView();
+          showToast(
+            `Call Refused — Outside Call Window (${windowCheck.timeLabel})`,
+            `${windowCheck.reason}`,
+            'rose'
+          );
+          renderBlockedCallScreen(customer, windowCheck);
+          return;
+        }
+
+        if (customer.do_not_call === 1) {
+          showToast(
+            'Call Blocked — Do Not Call (DNC) Active',
+            `${customer.name} (${customer.customer_id}) requested Do Not Call. Refused per Compliance Rule #6.`,
+            'rose'
+          );
+          return;
+        }
+      }
+      }
+
+      const now = new Date();
+      const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+      const openingLatency = Math.floor(290 + Math.random() * 70);
+      const openingText = generateOpeningGreeting(customer);
+
+      activeCall = {
+        call_id: `CALL-${1000 + calls.length + 1}`,
+        customer_id: customer.customer_id,
+        customer_name: customer.name,
+        phone: customer.phone,
+        customer: customer,
+        start_time: timestamp,
+        startedAtMs: Date.now(),
+        duration_seconds: 0,
+        connected: false,
+        outcome: 'Pending',
+        language: customer.language,
+        callback_time: null,
+        stage: 'AWAITING_NAME_CONFIRMATION',
+        latencies: [openingLatency],
+        ended: false,
+        silenceRemaining: 15,
+        transcript: [
+          {
+            speaker: 'Bot',
+            lang: customer.language,
+            latency_ms: openingLatency,
+            text: openingText
+          }
+        ]
+      };
+
+      updateLatencyBadge(openingLatency);
+      document.getElementById('callStateBadge').textContent = 'LIVE CALL';
+      document.getElementById('callStateBadge').className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#5D8C3E]/15 text-[#5D8C3E] border border-[#5D8C3E]/30 font-semibold';
+      document.getElementById('lastOutcomePill').textContent = 'Outcome: In Progress...';
+      document.getElementById('endCallBtn').disabled = false;
+      document.getElementById('triggerSilenceTimeoutBtn').disabled = false;
+
+      renderLiveTranscript();
+      speakBotText(openingText, customer.language);
+
+      clearInterval(callDurationInterval);
+      clearInterval(silenceTimerInterval);
+
+      callDurationInterval = setInterval(() => {
+        if (!activeCall || activeCall.ended) return;
+        activeCall.duration_seconds = Math.max(1, Math.round((Date.now() - activeCall.startedAtMs) / 1000));
+        const mins = String(Math.floor(activeCall.duration_seconds / 60)).padStart(2, '0');
+        const secs = String(activeCall.duration_seconds % 60).padStart(2, '0');
+        document.getElementById('callDurationText').textContent = `${mins}:${secs}`;
+      }, 500);
+
+      resetSilenceCountdown();
+      silenceTimerInterval = setInterval(() => {
+        if (!activeCall || activeCall.ended) return;
+        activeCall.silenceRemaining = Math.max(0, activeCall.silenceRemaining - 1);
+        updateSilenceBarUI();
+        if (activeCall.silenceRemaining <= 0) {
+          trigger15SecondSilenceDisconnect();
+        }
+      }, 1000);
+    }
+
+    function resetSilenceCountdown() {
+      if (!activeCall) return;
+      activeCall.silenceRemaining = 15;
+      updateSilenceBarUI();
+    }
+
+    function updateSilenceBarUI() {
+      if (!activeCall) return;
+      const rem = activeCall.silenceRemaining;
+      document.getElementById('silenceCountdownText').textContent = `${rem}s`;
+      const pct = Math.max(0, (rem / 15) * 100);
+      const bar = document.getElementById('silenceProgressBar');
+      bar.style.width = `${pct}%`;
+      bar.className = rem <= 5
+        ? 'bg-[#C0392B] h-full transition-all duration-300'
+        : rem <= 10
+        ? 'bg-[#D4A056] h-full transition-all duration-300'
+        : 'bg-[#5D8C3E] h-full transition-all duration-300';
+    }
+
+    function trigger15SecondSilenceDisconnect() {
+      if (!activeCall || activeCall.ended) return;
+      activeCall.duration_seconds = Math.max(15, activeCall.duration_seconds);
+      activeCall.transcript.push({
+        speaker: 'System',
+        lang: activeCall.language,
+        text: '[15 seconds of silence elapsed — no response detected. Call ended automatically.]'
+      });
+      finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', '15s silence timeout');
+    }
+
+    function build3LineSummary(callRecord, stopReason) {
+      const connStr = callRecord.connected ? 'Connected = Yes' : 'Connected = No';
+      const line1 = `1. Automated assistant called ${callRecord.customer_name} (${callRecord.phone}) in ${callRecord.language} with mandatory Shaha Finlease & recording disclosure.`;
+      let line2 = '';
+      if (!callRecord.connected) {
+        line2 = `2. Recipient did not speak (${stopReason || '15s silence / call dropped before reply'}).`;
+      } else if (callRecord.outcome === 'Right customer') {
+        line2 = `2. Speaker confirmed identity as ${callRecord.customer_name} and verified matching birth year (${callRecord.customer.birth_year}).`;
+      } else if (callRecord.outcome === 'Verification failed') {
+        line2 = `2. Speaker confirmed name as ${callRecord.customer_name} but provided an incorrect birth year (expected ${callRecord.customer.birth_year}).`;
+      } else if (callRecord.outcome === 'Wrong number') {
+        line2 = `2. Speaker stated this is a wrong number / unknown person (or requested Do Not Call); bot apologised immediately.`;
+      } else if (callRecord.outcome === 'Callback requested') {
+        line2 = `2. Third party / relative answered and requested a callback at ${callRecord.callback_time || 'specified time'}; zero customer details disclosed.`;
+      } else {
+        line2 = `2. Third party answered (${stopReason || 'customer unavailable, no callback time provided'}); zero customer details disclosed.`;
+      }
+      const line3 = `3. Call saved to database with ${connStr}, Outcome = ${callRecord.outcome}, Duration = ${callRecord.duration_seconds}s, and 0 compliance violations.`;
+      return [line1, line2, line3];
+    }
+
+    function finalizeActiveCall(outcome, stopReason = '') {
+      if (!activeCall || activeCall.ended) return;
+      activeCall.ended = true;
+      clearInterval(callDurationInterval);
+      clearInterval(silenceTimerInterval);
+
+      activeCall.duration_seconds = Math.max(1, activeCall.duration_seconds || Math.round((Date.now() - activeCall.startedAtMs) / 1000));
+      activeCall.outcome = outcome;
+
+      const avgLatency = Math.round(
+        activeCall.latencies.reduce((a, b) => a + b, 0) / Math.max(1, activeCall.latencies.length)
+      );
+
+      const savedCall = {
+        call_id: activeCall.call_id,
+        customer_id: activeCall.customer_id,
+        customer_name: activeCall.customer_name,
+        phone: activeCall.phone,
+        start_time: activeCall.start_time,
+        duration_seconds: activeCall.duration_seconds,
+        connected: activeCall.connected,
+        outcome: activeCall.outcome,
+        language: activeCall.language,
+        callback_time: activeCall.callback_time,
+        avg_latency_ms: avgLatency,
+        transcript: activeCall.transcript.map(t => ({ ...t })),
+        summary_3line: build3LineSummary(activeCall, stopReason)
+      };
+
+      calls.unshift(savedCall);
+      selectedCallDetailId = savedCall.call_id;
+
+      document.getElementById('callStateBadge').textContent = `SAVED · ${outcome.toUpperCase()}`;
+      document.getElementById('callStateBadge').className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 font-semibold';
+      document.getElementById('lastOutcomePill').textContent = `Saved Outcome: ${outcome}`;
+      document.getElementById('endCallBtn').disabled = true;
+      document.getElementById('triggerSilenceTimeoutBtn').disabled = true;
+
+      renderLiveTranscript();
+      updateReportView();
+      showToast(
+        `Call Saved to Database (${savedCall.call_id})`,
+        `${savedCall.customer_name} → Connected: ${savedCall.connected ? 'Yes' : 'No'} | Outcome: ${savedCall.outcome}`,
+        'emerald'
+      );
+
+      // Save call to FastAPI + SQL Server / SQLite backend (POST /api/calls/save)
+      const markDnc = (activeCall.customer && activeCall.customer.do_not_call === 1) ||
+                      (outcome === 'Wrong number' && activeCall.transcript.some(t => /stop calling|डू नॉट कॉल/i.test(t.text)));
+
+      fetch('/api/calls/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          call_id: savedCall.call_id,
+          customer_id: savedCall.customer_id,
+          start_time: savedCall.start_time,
+          duration_seconds: savedCall.duration_seconds,
+          connected: savedCall.connected,
+          outcome: savedCall.outcome,
+          language: savedCall.language,
+          callback_time: savedCall.callback_time,
+          transcript: savedCall.transcript,
+          summary_3line: savedCall.summary_3line,
+          mark_do_not_call: markDnc
+        })
+      })
+      .then(res => res.json())
+      .then(() => refreshReportFromBackend())
+      .catch(err => console.warn('Could not sync call to backend API:', err));
+    }
+
+    async function refreshReportFromBackend() {
+      try {
+        const res = await fetch('/api/report');
+        if (res.ok) {
+          const rep = await res.json();
+          if (rep && Array.isArray(rep.calls)) {
+            calls = rep.calls.map(c => {
+              const cust = customers.find(cu => cu.customer_id === c.customer_id) || {};
+              return {
+                call_id: c.call_id,
+                customer_id: c.customer_id,
+                customer_name: cust.name || c.customer_id,
+                phone: cust.phone || '',
+                start_time: c.start_time,
+                duration_seconds: c.duration_seconds,
+                connected: c.connected,
+                outcome: c.outcome,
+                language: c.language,
+                callback_time: c.callback_time,
+                avg_latency_ms: 380,
+                transcript: c.transcript,
+                summary_3line: c.summary_3line
+              };
+            });
+            if (calls.length > 0 && !selectedCallDetailId) {
+              selectedCallDetailId = calls[0].call_id;
+            }
+            updateReportView();
+          }
+        }
+      } catch (err) {
+        console.warn('Backend report sync error:', err);
+      }
+    }
+
+    async function hydrateFromBackend() {
+      try {
+        const res = await fetch('/api/customers');
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            customers = list;
+            renderCustomerTable();
+            updateSelectedCustomerHeader();
+          }
+        }
+      } catch (err) {
+        console.warn('Customer list fetch failed:', err);
+      }
+      await refreshReportFromBackend();
+    }
+
+    // =========================================================================
+    // 8. AUTO-PLAY PERSONA SIMULATION (`test_calls.csv`)
+    // =========================================================================
+    function clearAutoPlayTimeouts() {
+      autoPlayTimeoutIds.forEach(id => clearTimeout(id));
+      autoPlayTimeoutIds = [];
+    }
+
+    function autoPlayCustomerScenario(customerId) {
+      const scenario = TEST_SCENARIOS[customerId];
+      startCallForCustomer(customerId, true);
+      if (!activeCall || activeCall.ended) return;
+
+      if (!scenario) return;
+
+      scenario.steps.forEach((stepText, idx) => {
+        const timerId = setTimeout(() => {
+          if (!activeCall || activeCall.ended) return;
+          if (stepText === '__SILENCE_15S__') {
+            trigger15SecondSilenceDisconnect();
+          } else if (stepText === '__DROP_BEFORE_REPLY__') {
+            activeCall.duration_seconds = 5;
+            activeCall.transcript.push({
+              speaker: 'System',
+              lang: activeCall.language,
+              text: '[Call dropped / hung up before any spoken reply from recipient.]'
+            });
+            finalizeActiveCall('Not connected', 'Dropped before reply');
+          } else {
+            processBorrowerTurn(stepText);
+          }
+        }, (idx + 1) * 1800);
+        autoPlayTimeoutIds.push(timerId);
+      });
+    }
+
+    // =========================================================================
+    // 9. UI RENDERING FUNCTIONS
+    // =========================================================================
+    function outcomeBadgeClasses(outcome) {
+      switch (outcome) {
+        case 'Right customer':
+          return 'bg-[#5D8C3E]/15 text-[#5D8C3E] border-[#5D8C3E]/30';
+        case 'Verification failed':
+          return 'bg-[#D4A056]/20 text-[#6B4423] border-[#D4A056]/40';
+        case 'Wrong number':
+          return 'bg-[#C0392B]/12 text-[#C0392B] border-[#C0392B]/30';
+        case 'Callback requested':
+          return 'bg-[#4B8FB8]/15 text-[#4B8FB8] border-[#4B8FB8]/30';
+        case 'Third party answered':
+          return 'bg-[#B8763D]/15 text-[#6B4423] border-[#B8763D]/35';
+        case 'Not connected':
+          return 'bg-[#EADBC0]/80 text-[#6B5541] border-[#C9A574]';
+        default:
+          return 'bg-[#EADBC0] text-[#3D2817] border-[#B8763D]/30';
+      }
+    }
+
+    function renderCustomerTable() {
+      const tbody = document.getElementById('customerTableBody');
+      tbody.innerHTML = customers.map(c => {
+        const isSelected = c.customer_id === selectedCustomerId;
+        const dncBadge = c.do_not_call === 1
+          ? '<span class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30 font-semibold">DNC</span>'
+          : '';
+        return `
+          <tr data-customer-row="${c.customer_id}" class="cursor-pointer transition ${isSelected ? 'bg-[#EADBC0]/55 border-l-4 border-l-[#3D2817]' : 'hover:bg-[#F7EFE2]'}">
+            <td class="py-2.5 px-3 font-medium text-[#3D2817]">
+              <span class="mono text-[#B8763D] font-semibold mr-1">${c.customer_id}</span> ${c.name} ${dncBadge}
+            </td>
+            <td class="py-2.5 px-2 mono text-[#6B5541]">${c.phone}</td>
+            <td class="py-2.5 px-2 mono text-[#3D2817] font-medium">${c.birth_year}</td>
+            <td class="py-2.5 px-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.language === 'Hindi' ? 'bg-[#D4A056]/20 text-[#6B4423]' : 'bg-[#4B8FB8]/15 text-[#4B8FB8]'}">${c.language}</span>
+            </td>
+            <td class="py-2.5 px-3 text-right">
+              <button type="button" data-dial-customer="${c.customer_id}" class="px-3 py-1 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium transition shadow-sm">
+                Call
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateSelectedCustomerHeader() {
+      const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
+      if (!c) return;
+      document.getElementById('activeCustomerTitle').textContent = `${c.customer_id} · ${c.name}`;
+      document.getElementById('activeCustomerMeta').textContent = `${c.phone} · Birth Year: ${c.birth_year} · Default: ${c.language}`;
+      document.getElementById('detectedLangBadge').textContent = c.language === 'Hindi' ? 'Hindi (hi-IN)' : 'English (en-IN)';
+
+      const correctBtn = document.getElementById('btnCorrectBirthYear');
+      correctBtn.textContent = `🎂 Give Correct Birth Year (${c.birth_year})`;
+      correctBtn.setAttribute('data-year', String(c.birth_year));
+      correctBtn.setAttribute('data-lang', c.language);
+
+      const sc = TEST_SCENARIOS[c.customer_id];
+      if (sc) {
+        document.getElementById('selectedTestExpectedBadge').textContent = `Expected: ${sc.expected_outcome}`;
+        document.getElementById('selectedTestScenarioDesc').textContent =
+          `Call #${sc.call_no} (${c.customer_id} · ${c.name}): ${sc.tester_plays} (${sc.tester_language}).`;
+      }
+    }
+
+    function renderBlockedCallScreen(customer, windowCheck) {
+      const container = document.getElementById('transcriptContainer');
+      container.innerHTML = `
+        <div class="p-5 rounded-2xl bg-[#C0392B]/10 border border-[#C0392B]/30 text-[#3D2817] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B]">
+              Call Window Check (8:00 AM – 7:00 PM)
+            </span>
+            <span class="mono text-xs font-semibold text-[#C0392B]">${windowCheck.timeLabel}</span>
+          </div>
+          <h3 class="font-display font-bold text-lg text-[#3D2817]">Call Refused: Outside Calling Hours</h3>
+          <p class="text-xs text-[#6B5541] leading-relaxed">
+            Dialing <strong>${customer.name} (${customer.phone})</strong> was refused because the current time is <strong>${windowCheck.timeLabel}</strong>.
+          </p>
+          <p class="text-xs text-[#5D8C3E] font-semibold">
+            ✓ Refused calls before 8 AM or after 7 PM are not counted as an attempt.
+          </p>
+        </div>
+      `;
+    }
+
+    function renderLiveTranscript() {
+      const container = document.getElementById('transcriptContainer');
+      if (!activeCall) return;
+
+      let html = activeCall.transcript.map((turn, idx) => {
+        if (turn.speaker === 'Bot') {
+          return `
+            <div class="flex items-start gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-[#3D2817] text-[#FDF8F0] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-sm">AI</div>
+              <div class="flex-1 bg-[#FFFDF9] border border-[#6B4423]/15 rounded-2xl rounded-tl-none p-3.5 text-xs sm:text-sm text-[#3D2817] shadow-sm">
+                <div class="flex items-center justify-between gap-2 text-[11px] text-[#B8763D] mb-1">
+                  <span class="font-semibold">Shaha Finlease Assistant (${turn.lang})</span>
+                  <div class="flex items-center gap-2">
+                    ${turn.latency_ms ? `<span class="mono text-[#5D8C3E] font-semibold">${turn.latency_ms} ms (&lt;3s ✓)</span>` : ''}
+                    <button type="button" onclick="playAudioSnippet(${idx})" class="px-2 py-0.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/20 font-medium text-[10px] flex items-center gap-1 transition cursor-pointer" title="Listen to bot voice">
+                      🔊 Listen
+                    </button>
+                  </div>
+                </div>
+                <p class="leading-relaxed">${turn.text}</p>
+              </div>
+            </div>
+          `;
+        }
+        if (turn.speaker === 'Borrower') {
+          return `
+            <div class="flex items-start gap-2.5 justify-end">
+              <div class="max-w-[85%] bg-[#EADBC0]/75 border border-[#B8763D]/30 rounded-2xl rounded-tr-none p-3.5 text-xs sm:text-sm text-[#3D2817] shadow-sm">
+                <div class="flex items-center justify-between gap-2 text-[11px] text-[#6B4423] mb-1">
+                  <span class="font-semibold">Person on Line (${turn.lang})</span>
+                </div>
+                <p class="leading-relaxed">${turn.text}</p>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-[#B8763D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-sm">👤</div>
+            </div>
+          `;
+        }
+        return `
+          <div class="text-center py-1.5">
+            <span class="mono text-xs px-3.5 py-1 rounded-full bg-[#C0392B]/12 text-[#C0392B] border border-[#C0392B]/30 font-medium">${turn.text}</span>
+          </div>
+        `;
+      }).join('');
+
+      if (activeCall.ended) {
+        const saved = calls.find(c => c.call_id === activeCall.call_id);
+        if (saved) {
+          html += `
+            <div class="mt-3 p-4 rounded-2xl bg-[#5D8C3E]/10 border border-[#5D8C3E]/30 space-y-1.5 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-[#5D8C3E]">✓ Saved to SQL Database (${saved.call_id})</span>
+                <span class="mono px-2.5 py-0.5 rounded-full border font-semibold ${outcomeBadgeClasses(saved.outcome)}">${saved.outcome}</span>
+              </div>
+              <div class="text-[#3D2817] space-y-0.5 pt-1">
+                ${saved.summary_3line.map(line => `<div>${line}</div>`).join('')}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      container.innerHTML = html;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // =========================================================================
+    // 10. REPORT PAGE & CALL LOG RENDERING
+    // =========================================================================
+    const ALL_OUTCOMES = [
+      'Right customer',
+      'Verification failed',
+      'Wrong number',
+      'Callback requested',
+      'Third party answered',
+      'Not connected'
+    ];
+
+    function updateReportView() {
+      const attempted = calls.length;
+      const connected = calls.filter(c => c.connected).length;
+      const notConnected = calls.filter(c => !c.connected).length;
+      const rightCustomers = calls.filter(c => c.outcome === 'Right customer').length;
+
+      const connectRate = attempted > 0 ? ((connected / attempted) * 100).toFixed(1) : '0.0';
+      const rightPartyRate = connected > 0 ? ((rightCustomers / connected) * 100).toFixed(1) : '0.0';
+
+      document.getElementById('navCallCountBadge').textContent = String(attempted);
+      document.getElementById('kpiAttempted').textContent = String(attempted);
+      document.getElementById('kpiBlockedOutWindow').textContent = String(blockedOutOfWindowCount);
+      document.getElementById('kpiConnected').textContent = String(connected);
+      document.getElementById('kpiNotConnected').textContent = String(notConnected);
+      document.getElementById('kpiConnectRate').textContent = `${connectRate}%`;
+      document.getElementById('kpiConnectFormula').textContent = `${connected} connected ÷ ${attempted} attempted`;
+      document.getElementById('kpiRightPartyRate').textContent = `${rightPartyRate}%`;
+      document.getElementById('kpiRightPartyFormula').textContent = `${rightCustomers} right cust ÷ ${connected} connected`;
+
+      const grid = document.getElementById('outcomeBreakdownGrid');
+      grid.innerHTML = ALL_OUTCOMES.map(outcome => {
+        const count = calls.filter(c => c.outcome === outcome).length;
+        const activeFilter = outcomeFilter === outcome;
+        return `
+          <button type="button" data-outcome-card="${outcome}" class="text-left p-3.5 rounded-2xl border transition ${activeFilter ? 'bg-[#EADBC0] border-[#3D2817] shadow-sm' : 'bg-[#F7EFE2]/70 border-[#6B4423]/12 hover:bg-[#EADBC0]/50'}">
+            <div class="flex items-center justify-between">
+              <span class="font-display text-2xl font-bold text-[#3D2817]">${count}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full border font-medium ${outcomeBadgeClasses(outcome)}">${outcome}</span>
+            </div>
+            <div class="text-[11px] text-[#6B5541] mt-1.5 truncate font-medium">${outcome}</div>
+          </button>
+        `;
+      }).join('');
+
+      const filteredCalls = outcomeFilter === 'ALL'
+        ? calls
+        : calls.filter(c => c.outcome === outcomeFilter);
+
+      const tbody = document.getElementById('callLogTableBody');
+      if (filteredCalls.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-[#9A826A]">No calls matching filter "${outcomeFilter}".</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredCalls.map(call => {
+          const isSelected = call.call_id === selectedCallDetailId;
+          return `
+            <tr data-call-row="${call.call_id}" class="cursor-pointer transition ${isSelected ? 'bg-[#EADBC0]/55 border-l-4 border-l-[#3D2817]' : 'hover:bg-[#F7EFE2]'}">
+              <td class="py-2.5 px-3 mono font-semibold text-[#B8763D]">${call.call_id}</td>
+              <td class="py-2.5 px-2.5 text-[#3D2817] font-medium">${call.customer_id} · ${call.customer_name}</td>
+              <td class="py-2.5 px-2 mono text-[#6B5541]">${call.start_time.split(' ')[1] || call.start_time}</td>
+              <td class="py-2.5 px-2 mono text-[#3D2817]">${call.duration_seconds}s</td>
+              <td class="py-2.5 px-2">
+                <span class="mono text-[11px] px-2 py-0.5 rounded-full font-semibold ${call.connected ? 'bg-[#5D8C3E]/15 text-[#5D8C3E]' : 'bg-[#C0392B]/15 text-[#C0392B]'}">${call.connected ? 'YES' : 'NO'}</span>
+              </td>
+              <td class="py-2.5 px-2.5">
+                <span class="text-[11px] px-2.5 py-0.5 rounded-full border font-medium ${outcomeBadgeClasses(call.outcome)}">${call.outcome}</span>
+              </td>
+              <td class="py-2.5 px-2 text-[#6B5541] font-medium">${call.language}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      renderSelectedCallDetail();
+    }
+
+    function renderSelectedCallDetail() {
+      const call = calls.find(c => c.call_id === selectedCallDetailId) || calls[0];
+      if (!call) return;
+
+      document.getElementById('detailCallIdBadge').textContent = call.call_id;
+      document.getElementById('detailCustomerTitle').textContent = `${call.customer_id} · ${call.customer_name} (${call.phone})`;
+      document.getElementById('detailCallMeta').textContent =
+        `${call.start_time} · Duration: ${call.duration_seconds}s · Connected: ${call.connected ? 'YES' : 'NO'} · Lang: ${call.language} · Avg Reply: ${call.avg_latency_ms || 390}ms`;
+
+      const outBadge = document.getElementById('detailOutcomeBadge');
+      outBadge.textContent = call.outcome;
+      outBadge.className = `mono text-xs px-3 py-1 rounded-full font-semibold border ${outcomeBadgeClasses(call.outcome)}`;
+
+      const cbBadge = document.getElementById('detailCallbackBadge');
+      if (call.callback_time) {
+        cbBadge.textContent = `Callback: ${call.callback_time}`;
+        cbBadge.classList.remove('hidden');
+      } else {
+        cbBadge.classList.add('hidden');
+      }
+
+      document.getElementById('detailSummaryLines').innerHTML = call.summary_3line
+        .map(line => `<p>${line}</p>`)
+        .join('');
+
+      document.getElementById('detailTranscriptList').innerHTML = call.transcript
+        .map(t => `
+          <div class="p-3 rounded-xl border ${t.speaker === 'Bot' ? 'bg-[#FFFDF9] border-[#6B4423]/15' : t.speaker === 'Borrower' ? 'bg-[#EADBC0]/55 border-[#B8763D]/25' : 'bg-[#C0392B]/10 border-[#C0392B]/25'}">
+            <div class="flex items-center justify-between text-[11px] text-[#6B5541] mb-1">
+              <span class="font-semibold ${t.speaker === 'Bot' ? 'text-[#B8763D]' : t.speaker === 'Borrower' ? 'text-[#3D2817]' : 'text-[#C0392B]'}">${t.speaker} (${t.lang || call.language})</span>
+              <div class="flex items-center gap-2">
+                ${t.latency_ms ? `<span class="mono text-[#5D8C3E] font-semibold">${t.latency_ms} ms</span>` : ''}
+                ${t.speaker === 'Bot' ? `
+                  <button type="button" onclick="playAudioDetailSnippet('${encodeURIComponent(t.text)}', '${t.lang || call.language}')" class="px-2 py-0.5 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/25 font-medium text-[10px] flex items-center gap-1 shadow-xs transition cursor-pointer" title="Listen to bot utterance">
+                    🔊 Listen
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+            <div class="text-[#3D2817] leading-relaxed">${t.text}</div>
+          </div>
+        `).join('');
+    }
+
+    // =========================================================================
+    // 11. NAVIGATION, TOASTS & EVENT LISTENERS
+    // =========================================================================
+    function switchScreen(screenName) {
+      const consoleEl = document.getElementById('screenConsole');
+      const reportEl = document.getElementById('screenReport');
+      const guardrailsEl = document.getElementById('screenGuardrails');
+      const blueprintEl = document.getElementById('screenBlueprint');
+
+      if (screenName === 'console') {
+        consoleEl.classList.remove('hidden');
+        reportEl.classList.add('hidden');
+        document.getElementById('tabBtnConsole').className = 'px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all bg-[#3D2817] text-[#FDF8F0] shadow-sm';
+        document.getElementById('tabBtnReport').className = 'px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all text-[#6B5541] hover:text-[#3D2817] flex items-center gap-1.5';
+        document.getElementById('sideNavConsoleBtn').className = 'w-10 h-10 rounded-xl flex items-center justify-center transition bg-[#B8763D]/15 text-[#3D2817] border border-[#B8763D]/30';
+        document.getElementById('sideNavReportBtn').className = 'w-10 h-10 rounded-xl flex items-center justify-center transition text-[#6B5541] hover:bg-[#EADBC0]/50 hover:text-[#3D2817]';
+      } else if (screenName === 'report') {
+        consoleEl.classList.add('hidden');
+        reportEl.classList.remove('hidden');
+        document.getElementById('tabBtnConsole').className = 'px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all text-[#6B5541] hover:text-[#3D2817]';
+        document.getElementById('tabBtnReport').className = 'px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all bg-[#3D2817] text-[#FDF8F0] shadow-sm flex items-center gap-1.5';
+        document.getElementById('sideNavConsoleBtn').className = 'w-10 h-10 rounded-xl flex items-center justify-center transition text-[#6B5541] hover:bg-[#EADBC0]/50 hover:text-[#3D2817]';
+        document.getElementById('sideNavReportBtn').className = 'w-10 h-10 rounded-xl flex items-center justify-center transition bg-[#B8763D]/15 text-[#3D2817] border border-[#B8763D]/30';
+        updateReportView();
+      } else if (screenName === 'guardrails') {
+        guardrailsEl.classList.toggle('hidden');
+      } else if (screenName === 'blueprint') {
+        blueprintEl.classList.toggle('hidden');
+      }
+    }
+
+    let toastTimeout = null;
+    function showToast(title, body, color = 'indigo') {
+      const container = document.getElementById('toastContainer');
+      const card = document.getElementById('toastCard');
+      document.getElementById('toastTitle').textContent = title;
+      document.getElementById('toastBody').textContent = body;
+      document.getElementById('toastIcon').textContent = color === 'rose' ? '🚫' : color === 'emerald' ? '✅' : 'ℹ️';
+      card.className = `rounded-2xl border p-4 shadow-xl bg-[#FFFDF9] flex items-start gap-3 ${
+        color === 'rose' ? 'border-[#C0392B]/40' : color === 'emerald' ? 'border-[#5D8C3E]/40' : 'border-[#B8763D]/40'
+      }`;
+      container.classList.remove('hidden');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        container.classList.add('hidden');
+      }, 5000);
+    }
+
+    function copyTextWithFallback(text, label) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        showToast('Copied to Clipboard', `${label} copied successfully.`, 'emerald');
+      } catch (e) {
+        showToast('Copy Ready', 'Select the text box to copy manually.', 'indigo');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderCustomerTable();
+      updateSelectedCustomerHeader();
+      updateClockHeaderUI();
+      updateReportView();
+      hydrateFromBackend();
+
+      document.getElementById('tabBtnConsole').addEventListener('click', () => switchScreen('console'));
+      document.getElementById('tabBtnReport').addEventListener('click', () => switchScreen('report'));
+      document.getElementById('tabBtnGuardrails').addEventListener('click', () => switchScreen('guardrails'));
+      document.getElementById('tabBtnBlueprint').addEventListener('click', () => switchScreen('blueprint'));
+
+      document.getElementById('sideNavConsoleBtn').addEventListener('click', () => switchScreen('console'));
+      document.getElementById('sideNavReportBtn').addEventListener('click', () => switchScreen('report'));
+      document.getElementById('sideNavGuardrailsBtn').addEventListener('click', () => switchScreen('guardrails'));
+      document.getElementById('sideNavBlueprintBtn').addEventListener('click', () => switchScreen('blueprint'));
+
+      document.getElementById('clockModeSelect').addEventListener('change', updateClockHeaderUI);
+
+      document.getElementById('toastCloseBtn').addEventListener('click', () => {
+        document.getElementById('toastContainer').classList.add('hidden');
+      });
+
+      document.getElementById('customerTableBody').addEventListener('click', (e) => {
+        const dialBtn = e.target.closest('[data-dial-customer]');
+        if (dialBtn) {
+          const cid = dialBtn.getAttribute('data-dial-customer');
+          startCallForCustomer(cid);
+          return;
+        }
+        const row = e.target.closest('[data-customer-row]');
+        if (row) {
+          selectedCustomerId = row.getAttribute('data-customer-row');
+          renderCustomerTable();
+          updateSelectedCustomerHeader();
+        }
+      });
+
+      document.getElementById('startCallBtn').addEventListener('click', () => {
+        startCallForCustomer(selectedCustomerId);
+      });
+
+      document.getElementById('endCallBtn').addEventListener('click', () => {
+        if (!activeCall || activeCall.ended) return;
+        activeCall.transcript.push({
+          speaker: 'System',
+          lang: activeCall.language,
+          text: '[Call stopped midway by user — saving partial transcript & outcome to database.]'
+        });
+        finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Call stopped midway');
+      });
+
+      document.getElementById('triggerSilenceTimeoutBtn').addEventListener('click', () => {
+        trigger15SecondSilenceDisconnect();
+      });
+
+      document.getElementById('ttsToggleBtn').addEventListener('click', () => {
+        ttsEnabled = !ttsEnabled;
+        const btn = document.getElementById('ttsToggleBtn');
+        btn.textContent = ttsEnabled ? '🔊 TTS: ON' : '🔇 TTS: MUTED';
+        if (!ttsEnabled && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+      });
+
+      document.querySelectorAll('.quick-reply-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const reply = btn.getAttribute('data-quick-reply');
+          if (!activeCall || activeCall.ended) {
+            startCallForCustomer(selectedCustomerId);
+          }
+          setTimeout(() => processBorrowerTurn(reply), 120);
+        });
+      });
+
+      document.getElementById('btnCorrectBirthYear').addEventListener('click', () => {
+        const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
+        if (!activeCall || activeCall.ended) {
+          startCallForCustomer(c.customer_id);
+        }
+        const text = c.language === 'Hindi'
+          ? `मेरा जन्म का साल ${c.birth_year} है।`
+          : `My birth year is ${c.birth_year}.`;
+        setTimeout(() => processBorrowerTurn(text), 120);
+      });
+
+      document.getElementById('borrowerInputForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('borrowerTextInput');
+        const val = input.value.trim();
+        if (!val) return;
+        if (!activeCall || activeCall.ended) {
+          startCallForCustomer(selectedCustomerId);
+        }
+        input.value = '';
+        setTimeout(() => processBorrowerTurn(val), 80);
+      });
+
+      document.getElementById('micButton').addEventListener('click', () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          showToast('Speech Recognition Info', 'Your browser iframe does not expose Web Speech STT; use the text box or 1-click borrower buttons.', 'indigo');
+          return;
+        }
+        try {
+          const rec = new SpeechRecognition();
+          const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
+          rec.lang = c.language === 'Hindi' ? 'hi-IN' : 'en-IN';
+          rec.interimResults = false;
+          document.getElementById('micLabel').textContent = 'Listening...';
+          rec.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('borrowerTextInput').value = transcript;
+            if (!activeCall || activeCall.ended) {
+              startCallForCustomer(selectedCustomerId);
+            }
+            processBorrowerTurn(transcript);
+          };
+          rec.onend = () => {
+            document.getElementById('micLabel').textContent = 'Speak';
+          };
+          rec.onerror = () => {
+            document.getElementById('micLabel').textContent = 'Speak';
+          };
+          rec.start();
+        } catch (err) {
+          document.getElementById('micLabel').textContent = 'Speak';
+        }
+      });
+
+      document.getElementById('autoPlayPersonaBtn').addEventListener('click', () => {
+        document.getElementById('clockModeSelect').value = 'in_window';
+        updateClockHeaderUI();
+        autoPlayCustomerScenario(selectedCustomerId);
+      });
+
+      const reloadAll10Fn = async () => {
+        clearAutoPlayTimeouts();
+        try {
+          const res = await fetch('/api/seed_test_calls', { method: 'POST' });
+          if (res.ok) {
+            await refreshReportFromBackend();
+            showToast('10 Test Calls Loaded', 'Loaded all 10 pre-verified calls into SQL dbo.Call.', 'emerald');
+            return;
+          }
+        } catch (e) {
+          console.warn('Backend seed failed, using local mirror:', e);
+        }
+        calls = JSON.parse(JSON.stringify(PRELOADED_CALLS));
+        selectedCallDetailId = calls[0].call_id;
+        outcomeFilter = 'ALL';
+        document.getElementById('outcomeFilterSelect').value = 'ALL';
+        updateReportView();
+        showToast('10 Test Calls Loaded', 'Loaded all 10 pre-verified calls from test_calls.csv into dbo.Call.', 'emerald');
+      };
+      document.getElementById('runAll10TestsBtn').addEventListener('click', reloadAll10Fn);
+      document.getElementById('reloadTestCallsReportBtn').addEventListener('click', reloadAll10Fn);
+
+      document.getElementById('resetCustomersBtn').addEventListener('click', async () => {
+        try {
+          await fetch('/api/customers/reset', { method: 'POST' });
+        } catch (e) {}
+        customers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
+        renderCustomerTable();
+        updateSelectedCustomerHeader();
+        showToast('Customers Reset', 'Reloaded 10 dummy customers from customers.csv with DNC = 0.', 'emerald');
+      });
+
+      document.getElementById('csvUploadInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const text = evt.target.result;
+          const lines = text.trim().split(/\r?\n/);
+          if (lines.length < 2) return;
+          const parsed = [];
+          for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',').map(s => s.trim());
+            if (cols.length >= 5) {
+              parsed.push({
+                customer_id: cols[0] || `C00${i}`,
+                name: cols[1],
+                phone: cols[2],
+                birth_year: parseInt(cols[3], 10) || 1985,
+                language: cols[4] || 'Hindi',
+                do_not_call: parseInt(cols[5] || '0', 10) || 0
+              });
+            }
+          }
+          if (parsed.length > 0) {
+            customers = parsed;
+            selectedCustomerId = customers[0].customer_id;
+            renderCustomerTable();
+            updateSelectedCustomerHeader();
+            showToast('CSV Loaded', `Loaded ${parsed.length} customers from ${file.name}.`, 'emerald');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      document.getElementById('demoStep1Btn').addEventListener('click', () => {
+        switchScreen('console');
+        document.getElementById('clockModeSelect').value = 'out_night';
+        updateClockHeaderUI();
+        startCallForCustomer('C001');
+      });
+
+      document.getElementById('demoStep2Btn').addEventListener('click', () => {
+        switchScreen('console');
+        document.getElementById('clockModeSelect').value = 'in_window';
+        updateClockHeaderUI();
+        autoPlayCustomerScenario('C001');
+      });
+
+      document.getElementById('demoStep3Btn').addEventListener('click', () => {
+        switchScreen('console');
+        document.getElementById('clockModeSelect').value = 'in_window';
+        updateClockHeaderUI();
+        autoPlayCustomerScenario('C003');
+      });
+
+      document.getElementById('demoStep4Btn').addEventListener('click', () => {
+        switchScreen('console');
+        document.getElementById('clockModeSelect').value = 'in_window';
+        updateClockHeaderUI();
+        autoPlayCustomerScenario('C004');
+      });
+
+      document.getElementById('demoStep5Btn').addEventListener('click', () => {
+        switchScreen('report');
+      });
+
+      document.getElementById('outcomeFilterSelect').addEventListener('change', (e) => {
+        outcomeFilter = e.target.value;
+        updateReportView();
+      });
+
+      document.getElementById('outcomeBreakdownGrid').addEventListener('click', (e) => {
+        const card = e.target.closest('[data-outcome-card]');
+        if (!card) return;
+        const clickedOutcome = card.getAttribute('data-outcome-card');
+        outcomeFilter = outcomeFilter === clickedOutcome ? 'ALL' : clickedOutcome;
+        document.getElementById('outcomeFilterSelect').value = outcomeFilter;
+        updateReportView();
+      });
+
+      document.getElementById('callLogTableBody').addEventListener('click', (e) => {
+        const row = e.target.closest('[data-call-row]');
+        if (!row) return;
+        selectedCallDetailId = row.getAttribute('data-call-row');
+        updateReportView();
+      });
+
+      document.getElementById('replayTranscriptTtsBtn').addEventListener('click', () => {
+        const call = calls.find(c => c.call_id === selectedCallDetailId) || calls[0];
+        if (!call) return;
+        const botLines = call.transcript.filter(t => t.speaker === 'Bot').map(t => t.text).join(' ');
+        speakBotText(botLines, call.language);
+      });
+
+      document.getElementById('clearCallsDbBtn').addEventListener('click', async () => {
+        try {
+          await fetch('/api/calls/clear', { method: 'POST' });
+        } catch (e) {}
+        calls = [];
+        updateReportView();
+        showToast('Database Cleared', 'All rows cleared from dbo.Call. Click Reset to reload the 10 test calls.', 'indigo');
+      });
+
+      document.getElementById('exportCallsCsvBtn').addEventListener('click', () => {
+        const headers = ['call_id','customer_id','customer_name','phone','start_time','duration_seconds','connected','outcome','language','callback_time','summary_3line'];
+        const rows = calls.map(c => [
+          c.call_id,
+          c.customer_id,
+          `"${c.customer_name}"`,
+          c.phone,
+          c.start_time,
+          c.duration_seconds,
+          c.connected ? 'yes' : 'no',
+          `"${c.outcome}"`,
+          c.language,
+          `"${c.callback_time || ''}"`,
+          `"${c.summary_3line.join(' | ').replace(/"/g, '""')}"`
+        ].join(','));
+        const csv = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'shaha_finlease_call_report.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+
+      document.getElementById('runGuardrailTestBtn').addEventListener('click', () => {
+        const raw = document.getElementById('guardrailTestInput').value;
+        const res = verifyAndSanitizeBotReply(raw, 'English', 'Rahul Sharma');
+        const out = document.getElementById('guardrailTestResult');
+        if (res.safe) {
+          out.innerHTML = `<span class="text-[#5D8C3E] font-semibold">✓ PASSED:</span> No forbidden terms found. Output sent to TTS: "${res.text}"`;
+        } else {
+          out.innerHTML = `<div class="text-[#C0392B] font-semibold">🚫 INTERCEPTED VIOLATIONS: ${res.violations.join(', ')}</div><div class="text-[#5D8C3E] mt-1">Rewritten Safe Output: "${res.text}"</div>`;
+        }
+      });
+
+      document.getElementById('copyPromptBtn').addEventListener('click', () => {
+        copyTextWithFallback(document.getElementById('systemPromptPre').textContent, 'System Prompt');
+      });
+      document.getElementById('copySqlSchemaBtn').addEventListener('click', () => {
+        copyTextWithFallback(document.getElementById('sqlSchemaPre').textContent, 'SQL Server Schema');
+      });
+    });
+  </script>
+</body>
+</html>

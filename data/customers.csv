@@ -1,0 +1,12 @@
+customer_id,name,phone,birth_year,language,do_not_call
+C001,Rahul Sharma,+919000000001,1985,Hindi,0
+C002,Priya Nair,+919000000002,1992,English,0
+C003,Amit Patil,+919000000003,1988,Hindi,0
+C004,Sneha Kulkarni,+919000000004,1990,Hindi,0
+C005,Vikram Singh,+919000000005,1979,English,0
+C006,Anjali Deshmukh,+919000000006,1995,Hindi,0
+C007,Rohan Mehta,+919000000007,1983,English,0
+C008,Kavita Joshi,+919000000008,1976,Hindi,0
+C009,Suresh Yadav,+919000000009,1987,Hindi,0
+C010,Neha Gupta,+919000000010,1994,English,0
+C011,Himanshu Sharma,+916267386284,1995,Hindi,0

@@ -1,0 +1,11 @@
+call_no,customer_id,tester_plays,tester_language,expected_outcome,expected_connected
+1,C001,Right customer: confirms name and gives correct birth year,Hindi,Right customer,yes
+2,C002,Right customer: confirms name but gives a wrong birth year,English,Verification failed,yes
+3,C003,Wrong number: says "I don't know this person",Hindi,Wrong number,yes
+4,C004,Relative answers: customer is out and gives a time to call back,Hindi,Callback requested,yes
+5,C005,Silence: says nothing for 15 seconds,English,Not connected,no
+6,C006,Right customer: confirms name and gives correct birth year,Hindi,Right customer,yes
+7,C007,Right customer: confirms name but gives a wrong birth year,English,Verification failed,yes
+8,C008,Wrong number: says "This is not their number",Hindi,Wrong number,yes
+9,C009,Relative answers: customer is out and gives no callback time,Hindi,Third party answered,yes
+10,C010,Silence: hangs up before saying anything,English,Not connected,no

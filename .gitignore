@@ -1,0 +1,22 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local database & temp media
+*.db
+*.mp3
+/tmp/
+
+# Environment secrets
+.env
+
+# OS metadata
+.DS_Store
+Thumbs.db
