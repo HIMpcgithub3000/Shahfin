@@ -35,6 +35,7 @@ def test_bonus_1_sarvam_fallback_and_marathi_flow():
     assert is_sarvam_circuit_open() is True
 
     customer = get_customer("C003")  # Amit Patil
+    assert customer is not None
     # Turn 1: Borrower answers in Marathi affirmatively ("होय, मी अमित पाटील बोलतोय")
     res1 = process_turn(customer, "होय, मी अमित पाटील बोलतोय", "AWAITING_NAME_CONFIRMATION", "Marathi")
     assert res1["detected_language"] == "Marathi"
@@ -52,7 +53,9 @@ def test_bonus_1_sarvam_fallback_and_marathi_flow():
 
 def test_bonus_2_mid_call_language_switching():
     """Bonus 2: Seamlessly switch language mid-dialogue upon borrower request."""
-    customer = get_customer("C001")  # Rahul Sharma (Hindi by default)
+    customer = get_customer("C001")
+    assert customer is not None  # Rahul Sharma (Hindi by default)
+    assert customer is not None
 
     # 1. Detect explicit language switch intent
     assert detect_mid_call_language_switch("मला मराठीत बोला") == "Marathi"
@@ -145,6 +148,7 @@ def test_bonus_4_callback_time_strict_iso_field():
 
     # 2. Test turn processing extracts callback_time_iso
     customer = get_customer("C001")
+    assert customer is not None
     turn_res = process_turn(
         customer,
         "राहुल घर पर नहीं हैं, आप शाम 6:30 बजे कॉल करना",

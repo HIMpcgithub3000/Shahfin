@@ -137,6 +137,7 @@ def test_feature_2_opening_disclosure():
 def test_feature_3_outcome_1_right_customer():
     """Right customer: confirms name and matching birth year (Connected = 1)."""
     customer = get_customer("C001")
+    assert customer is not None
     res1 = process_turn(customer, "हाँ, मैं राहुल शर्मा बोल रहा हूँ।", "AWAITING_NAME_CONFIRMATION", "Hindi")
     assert res1["stage"] == "AWAITING_BIRTH_YEAR"
 
@@ -148,6 +149,7 @@ def test_feature_3_outcome_1_right_customer():
 def test_feature_3_outcome_2_verification_failed():
     """Verification failed: confirms name but wrong birth year. NEVER reveals expected year!"""
     customer = get_customer("C002")
+    assert customer is not None
     res1 = process_turn(customer, "Yes, this is Priya Nair speaking.", "AWAITING_NAME_CONFIRMATION", "English")
     assert res1["stage"] == "AWAITING_BIRTH_YEAR"
 
@@ -161,6 +163,7 @@ def test_feature_3_outcome_2_verification_failed():
 def test_feature_3_outcome_3_wrong_number():
     """Wrong number: says 'I don't know this person' -> apologises and ends immediately."""
     customer = get_customer("C003")
+    assert customer is not None
     res = process_turn(customer, "रॉन्ग नंबर है, मैं अमित पाटिल नाम के किसी व्यक्ति को नहीं जानता।", "AWAITING_NAME_CONFIRMATION", "Hindi")
     assert res["outcome"] == "Wrong number"
     assert "खेद" in res["bot_reply"] or "गलत नंबर" in res["bot_reply"] or "apologise" in res["bot_reply"]
@@ -169,6 +172,7 @@ def test_feature_3_outcome_3_wrong_number():
 def test_feature_3_outcome_4_callback_requested():
     """Callback requested: relative answers, gives callback time, zero loan disclosure."""
     customer = get_customer("C004")
+    assert customer is not None
     res = process_turn(customer, "स्नेहा अभी घर से बाहर गई हैं, आप आज शाम 6:30 बजे कॉल कर लीजिए।", "AWAITING_NAME_CONFIRMATION", "Hindi")
     assert res["outcome"] == "Callback requested"
     assert res["callback_time"] is not None
@@ -179,6 +183,7 @@ def test_feature_3_outcome_4_callback_requested():
 def test_feature_3_outcome_5_third_party_answered():
     """Third party answered: someone else answers and gives no callback time."""
     customer = get_customer("C009")
+    assert customer is not None
     res1 = process_turn(customer, "सुरेश जी अभी घर पर नहीं हैं, मैं उनका भाई बोल रहा हूँ।", "AWAITING_NAME_CONFIRMATION", "Hindi")
     assert res1["stage"] == "AWAITING_CALLBACK_TIME"
 
@@ -372,6 +377,7 @@ def test_compliance_rule_6_dnc_trigger_and_flag_update():
 def test_sla_latency_under_3_seconds():
     """Verify turn processing executes with latency < 3000 ms."""
     customer = get_customer("C001")
+    assert customer is not None
     res = process_turn(customer, "हाँ, मैं राहुल शर्मा बोल रहा हूँ।", "AWAITING_NAME_CONFIRMATION", "Hindi")
     assert res["latency_ms"] < 3000, f"Turn latency {res['latency_ms']} ms exceeded 3,000 ms SLA!"
 

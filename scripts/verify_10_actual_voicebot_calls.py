@@ -14,13 +14,14 @@ import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from typing import Any, Dict, List, Tuple
 from fastapi.testclient import TestClient
 from backend.main import app, CSV_PATH
 from backend.db import clear_calls, get_all_customers, get_connection, execute_sql, get_report_stats, reset_customers
 
 client = TestClient(app)
 
-PERSONA_RUNS = [
+PERSONA_RUNS: List[Dict[str, Any]] = [
     # 1. Hindi Right Customer (Run 1: C001 Rahul Sharma)
     {
         "customer_id": "C001",
@@ -159,7 +160,9 @@ def run_10_actual_voicebot_calls():
         latencies = []
 
         # Step 2: Execute borrower voice turns through the Live pipeline
-        for user_text, expected_stage, lang in p["turns"]:
+        turns = p.get("turns") or []
+        for turn_item in turns:
+            user_text, expected_stage, lang = turn_item
             turn_t0 = time.time()
             turn_res = client.post("/api/calls/turn", json={
                 "call_id": call_id,
@@ -183,7 +186,7 @@ def run_10_actual_voicebot_calls():
             print(f"  Guardrails Safe: {turn_data.get('guardrail_safe', True)} | Stage: {stage}")
 
         # Step 3: Finalize call in backend
-        duration_sec = 0 if not connected else int(10 + len(p["turns"]) * 5)
+        duration_sec = 0 if not connected else int(10 + len(turns) * 5)
         fin_res = client.post("/api/calls/finalize", json={
             "call_id": call_id,
             "duration_seconds": duration_sec,

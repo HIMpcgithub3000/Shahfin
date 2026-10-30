@@ -7,7 +7,7 @@
 """
 import re
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -98,7 +98,7 @@ def check_pre_call_gate(
 
 def verify_and_sanitize_reply(
     raw_reply: str, language: str, customer_name: str
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     """Runs deterministic code-level compliance checks on every LLM reply before TTS.
 
     If any forbidden term is detected, rewrites with standard compliant response.
