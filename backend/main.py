@@ -365,18 +365,14 @@ def initiate_real_phone_call(req: TelephonyOutboundRequest) -> Dict[str, Any]:
         client = Client(account_sid, auth_token)
         call_id = get_next_call_id()
 
-        # If base_url is a public HTTPS URL (e.g. ngrok), route through full webhook:
+        # Use public base_url or active public tunnel for bidirectional voicebot conversation:
+        tunnel_url = "https://evil-clouds-float.loca.lt"
         if base_url.startswith("https://") or (base_url.startswith("http://") and "localhost" not in base_url and "127.0.0.1" not in base_url and " " not in base_url):
-            voice_url = f"{base_url}/api/telephony/twilio/voice?customer_id={req.customer_id}&lang={req.language}&call_id={call_id}"
+            effective_base = base_url
         else:
-            # Twimlet fallback (works directly without public webhook configuration)
-            if req.language == "Marathi":
-                msg = f"Namaskar, mi Shaha Finlease kadun automated assistant bolat ahe. Ha call record kela jat ahe. Mi {cust_name} yanchyashi bolat ahe ka?"
-            elif req.language == "English":
-                msg = f"Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for verification purposes. Am I speaking with {cust_name}?"
-            else:
-                msg = f"Namaste, main Shaha Finlease se ek automated assistant bol rahi hoon. Yeh call gunwatta aur satyapan ke liye record ki ja rahi hai. Kya meri baat {cust_name} ji se ho rahi hai?"
-            voice_url = "http://twimlets.com/message?" + urllib.parse.urlencode({"Message[0]": msg, "Voice": "alice", "Language": "hi-IN" if req.language != "English" else "en-US"})
+            effective_base = tunnel_url
+
+        voice_url = f"{effective_base}/api/telephony/twilio/voice?customer_id={req.customer_id}&lang={req.language}&call_id={call_id}"
 
         tw_call = client.calls.create(
             to=req.phone_number,
