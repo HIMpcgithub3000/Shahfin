@@ -365,6 +365,8 @@ def initiate_real_phone_call(req: TelephonyOutboundRequest) -> Dict[str, Any]:
         from twilio.rest import Client
         client = Client(account_sid, auth_token)
         call_id = get_next_call_id()
+        opening_text = generate_opening_disclosure(cust_name, req.language)
+        create_initial_call_record(call_id, req.customer_id, req.language, opening_text)
 
         # Use public base_url or active public tunnel for bidirectional voicebot conversation:
         tunnel_url = "https://evil-clouds-float.loca.lt"
@@ -404,16 +406,20 @@ def twilio_voice_webhook(
     customer_id: str = Query("C001"),
     lang: str = Query("Hindi"),
     call_id: Optional[str] = Query(None),
+    mode: Optional[str] = Query(None),
 ) -> Response:
-    """Twilio Webhook: Initial TwiML connecting Twilio media to our WebSocket bridge (PRD Module 3)."""
+    """Twilio Webhook: Initial TwiML connecting Twilio call to conversational agent."""
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
     is_secure = "https" in (request.headers.get("x-forwarded-proto") or "") or "loca.lt" in host or "ngrok" in host
-    ws_proto = "wss" if is_secure else "ws"
+    proto = "https" if is_secure else "http"
+    base = f"{proto}://{host}"
     cid = call_id or get_next_call_id()
-    stream_ws_url = f"{ws_proto}://{host}/api/telephony/twilio/stream/{cid}"
 
-    # Return TwiML with bidirectional Media Stream as specified in PRD Section 4 (Module 3)
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+    # Explicit bidirectional Media Stream requested (e.g. over ngrok / production WebSocket domain)
+    if mode == "stream":
+        ws_proto = "wss" if is_secure else "ws"
+        stream_ws_url = f"{ws_proto}://{host}/api/telephony/twilio/stream/{cid}"
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
         <Stream url="{stream_ws_url}">
@@ -422,6 +428,23 @@ def twilio_voice_webhook(
             <Parameter name="language" value="{lang}" />
         </Stream>
     </Connect>
+</Response>"""
+        return Response(content=twiml, media_type="application/xml")
+
+    # Interactive Speech Recognition TwiML (ultra-reliable over localtunnel / HTTP webhooks)
+    customer = get_customer(customer_id)
+    cust_name = customer["name"] if customer else "Customer"
+    opening = generate_opening_disclosure(cust_name, lang)
+    twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
+    action_url = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={cid}&amp;stage=AWAITING_NAME_CONFIRMATION"
+
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech" action="{action_url}" method="POST" language="{twiml_lang}" timeout="8" speechTimeout="auto">
+        <Say language="{twiml_lang}">{opening}</Say>
+    </Gather>
+    <Say language="{twiml_lang}">कृपया अपना उत्तर बताएं। क्या मेरी बात {cust_name} जी से हो रही है?</Say>
+    <Gather input="speech" action="{action_url}" method="POST" language="{twiml_lang}" timeout="8" speechTimeout="auto"/>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
@@ -443,10 +466,11 @@ def twilio_turn_webhook(
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
     proto = request.headers.get("x-forwarded-proto") or ("https" if "loca.lt" in host or "ngrok" in host else "http")
     base = f"{proto}://{host}"
+    cid = call_id or ""
 
     if not speech_text:
         twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
-        action_url = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={call_id or ''}&amp;stage={stage}"
+        action_url = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={cid}&amp;stage={stage}"
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say language="{twiml_lang}">क्षमा करें, मुझे आपकी आवाज़ नहीं सुनाई दी।</Say>
@@ -460,9 +484,39 @@ def twilio_turn_webhook(
     detected_lang = res.get("detected_language") or lang
     twiml_lang = "hi-IN" if detected_lang == "Hindi" else ("mr-IN" if detected_lang == "Marathi" else "en-IN")
 
-    next_action = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={detected_lang}&amp;call_id={call_id or ''}&amp;stage={new_stage}"
+    # Persist the turn to database
+    if cid:
+        try:
+            update_call_turn(
+                call_id=cid,
+                borrower_text=speech_text,
+                bot_reply=bot_reply,
+                language=detected_lang,
+                outcome=res.get("outcome"),
+                callback_time=res.get("callback_time"),
+                mark_do_not_call=res.get("mark_do_not_call", False),
+                customer_id=customer_id,
+            )
+        except Exception as e:
+            print(f"[DB Turn Error] {e}")
+
+    next_action = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={detected_lang}&amp;call_id={cid}&amp;stage={new_stage}"
 
     if new_stage == "COMPLETED" or res.get("outcome"):
+        if cid:
+            try:
+                finalize_call_record(
+                    call_id=cid,
+                    duration_seconds=20,
+                    outcome=res.get("outcome") or "Right customer",
+                    summary_3line=res.get("summary_3line"),
+                    callback_time=res.get("callback_time"),
+                    callback_time_iso=res.get("callback_time_iso"),
+                    language=detected_lang,
+                )
+            except Exception as e:
+                print(f"[DB Finalize Error] {e}")
+
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say language="{twiml_lang}">{bot_reply}</Say>
