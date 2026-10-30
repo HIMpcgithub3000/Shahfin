@@ -451,10 +451,10 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
     groq_key = _get_groq_key()
     if not groq_key or Groq is None:
         return None
-    models = ["qwen/qwen3.8-27b"]
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
     for model_name in models:
         try:
-            client = Groq(api_key=groq_key, timeout=1.5, max_retries=0)
+            client = Groq(api_key=groq_key, timeout=1.0, max_retries=0)
             completion = client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -471,6 +471,8 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
                 return parsed
         except Exception as e:
             print(f"[LLM Warning] Groq {model_name} failed: {e}")
+            if "rate_limit_exceeded" in str(e) or "429" in str(e):
+                break  # Don't delay SLA if rate limit is reached
             continue
     return None
 
