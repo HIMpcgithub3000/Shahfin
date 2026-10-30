@@ -1,8 +1,13 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.pythonPath": "${workspaceFolder}/.venv/bin/python",
+  "python.defaultInterpreterPath": "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot/.venv/bin/python",
+  "python.pythonPath": "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot/.venv/bin/python",
   "python.analysis.extraPaths": [
-    "${workspaceFolder}"
+    "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot",
+    "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot/backend",
+    "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot/scripts"
   ],
-  "python.analysis.typeCheckingMode": "basic"
+  "python.analysis.typeCheckingMode": "off",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none"
+  }
 }

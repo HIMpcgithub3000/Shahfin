@@ -1,0 +1,17 @@
+{
+  "include": [
+    "backend",
+    "scripts"
+  ],
+  "venvPath": "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot",
+  "venv": ".venv",
+  "pythonVersion": "3.13",
+  "pythonPlatform": "Darwin",
+  "extraPaths": [
+    "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot",
+    "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot/backend",
+    "/Users/himanshusharma/Shaha_finance/shaha-finlease-voicebot/scripts"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": false
+}
