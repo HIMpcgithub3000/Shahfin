@@ -1565,6 +1565,9 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
       renderLiveTranscript();
       speakBotText(botReply, detectedLang);
+      if (!terminalOutcome) {
+        resetSilenceCountdown();
+      }
 
       if (setDncFlag) {
         customer.do_not_call = 1;
@@ -1728,33 +1731,50 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
     function resetSilenceCountdown() {
       if (!activeCall) return;
-      activeCall.silenceRemaining = 15;
+      activeCall.silenceTotal = activeCall.connected ? 45 : 15;
+      activeCall.silenceRemaining = activeCall.silenceTotal;
       updateSilenceBarUI();
     }
 
     function updateSilenceBarUI() {
       if (!activeCall) return;
       const rem = activeCall.silenceRemaining;
+      const total = activeCall.silenceTotal || (activeCall.connected ? 45 : 15);
       document.getElementById('silenceCountdownText').textContent = `${rem}s`;
-      const pct = Math.max(0, (rem / 15) * 100);
+      const pct = Math.max(0, (rem / total) * 100);
       const bar = document.getElementById('silenceProgressBar');
       bar.style.width = `${pct}%`;
       bar.className = rem <= 5
         ? 'bg-[#C0392B] h-full transition-all duration-300'
-        : rem <= 10
+        : rem <= (total * 0.4)
         ? 'bg-[#D4A056] h-full transition-all duration-300'
         : 'bg-[#5D8C3E] h-full transition-all duration-300';
     }
 
     function trigger15SecondSilenceDisconnect() {
       if (!activeCall || activeCall.ended) return;
-      activeCall.duration_seconds = Math.max(15, activeCall.duration_seconds);
+      activeCall.duration_seconds = Math.max(activeCall.duration_seconds, activeCall.connected ? 20 : 15);
+      
+      let finalOutcome = 'Not connected';
+      let msg = '[15 seconds of silence elapsed — recipient did not speak. Call ended automatically.]';
+
+      if (activeCall.connected) {
+        msg = '[Inactivity timeout: no further response received from recipient. Call ended automatically.]';
+        if (activeCall.stage === 'AWAITING_BIRTH_YEAR') {
+          finalOutcome = 'Verification failed';
+        } else if (activeCall.stage === 'AWAITING_CALLBACK_TIME') {
+          finalOutcome = 'Third party answered';
+        } else {
+          finalOutcome = 'Third party answered';
+        }
+      }
+
       activeCall.transcript.push({
         speaker: 'System',
         lang: activeCall.language,
-        text: '[15 seconds of silence elapsed — no response detected. Call ended automatically.]'
+        text: msg
       });
-      finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', '15s silence timeout');
+      finalizeActiveCall(finalOutcome, activeCall.connected ? 'Turn inactivity timeout' : '15s silence watchdog');
     }
 
     function build3LineSummary(callRecord, stopReason) {
@@ -1766,7 +1786,9 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       } else if (callRecord.outcome === 'Right customer') {
         line2 = `2. Speaker confirmed identity as ${callRecord.customer_name} and verified matching birth year (${callRecord.customer.birth_year}).`;
       } else if (callRecord.outcome === 'Verification failed') {
-        line2 = `2. Speaker confirmed name as ${callRecord.customer_name} but provided an incorrect birth year (expected ${callRecord.customer.birth_year}).`;
+        line2 = stopReason === 'Turn inactivity timeout'
+          ? `2. Speaker confirmed identity as ${callRecord.customer_name} but call disconnected before completing birth year verification.`
+          : `2. Speaker confirmed name as ${callRecord.customer_name} but provided an incorrect birth year (expected ${callRecord.customer.birth_year}).`;
       } else if (callRecord.outcome === 'Wrong number') {
         line2 = `2. Speaker stated this is a wrong number / unknown person (or requested Do Not Call); bot apologised immediately.`;
       } else if (callRecord.outcome === 'Callback requested') {
