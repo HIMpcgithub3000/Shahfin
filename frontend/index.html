@@ -232,6 +232,12 @@
             <span>FastAPI + PostgreSQL Live</span>
           </div>
 
+          <!-- Telephony Mode Header Badge -->
+          <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F7EFE2] border border-[#6B4423]/15 text-xs font-medium text-[#6B5541]">
+            <span>Mode:</span>
+            <span id="headerTelephonyModeBadge" class="font-bold text-[#6B4423]">🧪 Test Calls (Scripts)</span>
+          </div>
+
           <!-- Right: Call Window Gatekeeper (Feature #1: 8 AM – 7 PM Check) -->
           <div class="flex flex-wrap items-center gap-2 bg-[#F7EFE2] border border-[#6B4423]/15 rounded-full px-3.5 py-1.5">
             <div class="flex items-center gap-1.5 text-xs">
@@ -405,12 +411,27 @@
 
             <!-- Call Controls Bar -->
             <div class="px-4 sm:px-5 py-3 bg-[#FFFDF9] border-b border-[#6B4423]/10 flex flex-wrap items-center justify-between gap-2.5">
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2.5">
+                
+                <!-- Telephony Mode Master Toggle Switch -->
+                <div id="telephonyModeContainer" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F7EFE2] border border-[#6B4423]/20 shadow-sm transition-all" title="Toggle between Test Call scripts and Real Phone Calls via Twilio">
+                  <span class="text-xs font-semibold text-[#6B5541]">Call Mode:</span>
+                  <label class="relative inline-flex items-center cursor-pointer select-none">
+                    <input type="checkbox" id="telephonyModeToggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-[#D4B896] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#C9A574] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#5D8C3E]"></div>
+                  </label>
+                  <span id="telephonyModeLabel" class="text-xs font-bold text-[#6B4423] flex items-center gap-1.5 min-w-[135px]">
+                    <span class="w-2 h-2 rounded-full bg-[#B8763D]"></span>
+                    <span>Test Calls (Scripts)</span>
+                  </span>
+                </div>
+
                 <button id="startCallBtn" type="button" class="px-4 py-2 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5">
-                  <span>📞 Dial Selected Customer</span>
+                  <span id="startCallBtnIcon">📞</span>
+                  <span id="startCallBtnText">Dial Selected Customer</span>
                 </button>
-                <button id="dialTwilioBtn" type="button" class="px-3.5 py-2 rounded-full bg-[#B8763D]/15 text-[#3D2817] border border-[#B8763D]/35 font-medium text-xs sm:text-sm transition hover:bg-[#B8763D]/25 flex items-center gap-1.5" title="Trigger a real phone call via Twilio/Exotel (Bonus #5)">
-                  <span>📱 Real Phone Call (Twilio)</span>
+                <button id="dialTwilioBtn" type="button" class="px-3.5 py-2 rounded-full bg-[#B8763D]/15 text-[#3D2817] border border-[#B8763D]/35 font-medium text-xs sm:text-sm transition hover:bg-[#B8763D]/25 flex items-center gap-1.5" title="Trigger a real phone call to custom number via Twilio (Bonus #5)">
+                  <span>📱 Custom # Call</span>
                 </button>
                 <button id="endCallBtn" type="button" disabled class="px-3.5 py-2 rounded-full bg-[#C0392B]/12 text-[#C0392B] border border-[#C0392B]/30 font-medium text-xs sm:text-sm transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#C0392B] hover:text-white">
                   ⏹ End / Drop Midway
@@ -1731,6 +1752,189 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     }
 
     // =========================================================================
+    // 6B. TELEPHONY MODE (TEST CALLS VS REAL OUTBOUND TWILIO CALLS)
+    // =========================================================================
+    let isRealTelephonyMode = false;
+
+    function setTelephonyMode(isReal, showNotification = true) {
+      isRealTelephonyMode = isReal;
+      const toggle = document.getElementById('telephonyModeToggle');
+      if (toggle && toggle.checked !== isReal) toggle.checked = isReal;
+
+      const container = document.getElementById('telephonyModeContainer');
+      const label = document.getElementById('telephonyModeLabel');
+      const headerBadge = document.getElementById('headerTelephonyModeBadge');
+      const startBtn = document.getElementById('startCallBtn');
+      const startBtnText = document.getElementById('startCallBtnText');
+      const startBtnIcon = document.getElementById('startCallBtnIcon');
+
+      if (isReal) {
+        if (container) {
+          container.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#5D8C3E]/15 border-2 border-[#5D8C3E] shadow-sm transition-all ring-2 ring-[#5D8C3E]/20';
+        }
+        if (label) {
+          label.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-[#5D8C3E] animate-ping"></span><span class="text-[#5D8C3E] font-bold">Real Calls (Twilio)</span>`;
+        }
+        if (headerBadge) {
+          headerBadge.innerHTML = `<span class="text-[#5D8C3E] font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#5D8C3E] animate-pulse"></span>Real Calls (Twilio)</span>`;
+        }
+        if (startBtn) {
+          startBtn.className = 'px-4 py-2 rounded-full bg-[#5D8C3E] hover:bg-[#4d7533] text-[#FDF8F0] font-semibold text-xs sm:text-sm shadow-md shadow-[#5D8C3E]/30 ring-2 ring-[#5D8C3E]/40 transition flex items-center gap-1.5 animate-pulse';
+        }
+        if (startBtnIcon) startBtnIcon.textContent = '📱';
+        if (startBtnText) startBtnText.textContent = 'Place Real Phone Call';
+        if (showNotification) {
+          showToast('Real Telephony Mode Active', 'Dialing any customer will now place a real outbound phone call via Twilio to their actual phone number.', 'emerald');
+        }
+      } else {
+        if (container) {
+          container.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F7EFE2] border border-[#6B4423]/20 shadow-sm transition-all';
+        }
+        if (label) {
+          label.innerHTML = `<span class="w-2 h-2 rounded-full bg-[#B8763D]"></span><span class="text-[#6B4423] font-medium">Test Calls (Scripts)</span>`;
+        }
+        if (headerBadge) {
+          headerBadge.innerHTML = `<span class="text-[#6B4423] font-medium">🧪 Test Calls (Scripts)</span>`;
+        }
+        if (startBtn) {
+          startBtn.className = 'px-4 py-2 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5';
+        }
+        if (startBtnIcon) startBtnIcon.textContent = '📞';
+        if (startBtnText) startBtnText.textContent = 'Dial Selected Customer';
+        if (showNotification) {
+          showToast('Test Calls Mode Active', 'Dialing will execute pre-defined simulation scripts & browser audio.', 'amber');
+        }
+      }
+
+      renderCustomerTable();
+    }
+
+    async function executeRealOutboundCall(customer) {
+      const windowCheck = checkCallWindowAllowed();
+      let simHour = null;
+      const clockMode = document.getElementById('clockModeSelect').value;
+      if (clockMode === 'out_night') simHour = 21;
+      else if (clockMode === 'out_early') simHour = 6;
+      else if (clockMode === 'in_window') simHour = 11;
+
+      // 1. Compliance Window Gatekeeper Check (RBI 8 AM - 7 PM)
+      if (!windowCheck.allowed) {
+        blockedOutOfWindowCount++;
+        updateReportView();
+        showToast(`Call Refused — Outside Call Window (${windowCheck.timeLabel})`, windowCheck.reason, 'rose');
+        renderBlockedCallScreen(customer, windowCheck);
+        return;
+      }
+
+      // 2. DND Compliance Check (Rule #6)
+      if (customer.do_not_call === 1) {
+        showToast('Call Blocked — Do Not Call (DNC) Active', `${customer.name} (${customer.customer_id}) requested Do Not Call. Refused per Compliance Rule #6.`, 'rose');
+        return;
+      }
+
+      const targetPhone = customer.phone || '+916267386284';
+      const manualLang = document.getElementById('manualLangSelect').value;
+      const effectiveLang = manualLang !== 'Auto' ? manualLang : customer.language;
+
+      showToast('Initiating Live Phone Call', `Dialing ${customer.name} (${targetPhone}) via Twilio PSTN...`, 'emerald');
+
+      try {
+        const resp = await fetch('/api/telephony/outbound', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_id: customer.customer_id,
+            phone_number: targetPhone,
+            language: effectiveLang
+          })
+        });
+
+        const data = await resp.json();
+
+        if (data.status === 'success') {
+          showToast('🎉 Twilio Call Live', `Call SID: ${data.sid}. Outbound call connected to ${targetPhone}!`, 'emerald');
+          
+          const now = new Date();
+          const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+          const openingText = generateOpeningGreeting(customer);
+
+          activeCall = {
+            call_id: data.call_id || `CALL-TW-${Date.now().toString().slice(-4)}`,
+            customer_id: customer.customer_id,
+            customer_name: customer.name,
+            phone: targetPhone,
+            customer: customer,
+            start_time: timestamp,
+            startedAtMs: Date.now(),
+            duration_seconds: 0,
+            connected: true,
+            outcome: 'In Progress (Real PSTN)',
+            language: effectiveLang,
+            callback_time: null,
+            stage: 'TWILIO_LIVE_STREAM',
+            latencies: [320],
+            ended: false,
+            silenceRemaining: 60,
+            isRealTwilioCall: true,
+            twilioCallSid: data.sid,
+            transcript: [
+              {
+                speaker: 'System',
+                lang: effectiveLang,
+                latency_ms: 120,
+                text: `[Live PSTN Outbound Dispatched] Calling ${targetPhone} via Twilio Voice API. Call SID: ${data.sid}. Webhook URL: /api/telephony/twilio/voice.`
+              },
+              {
+                speaker: 'Bot',
+                lang: effectiveLang,
+                latency_ms: 310,
+                text: openingText
+              }
+            ]
+          };
+
+          updateLatencyBadge(310);
+          document.getElementById('callStateBadge').textContent = `LIVE PSTN (${data.sid.slice(0, 10)}...)`;
+          document.getElementById('callStateBadge').className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#5D8C3E]/20 text-[#5D8C3E] border border-[#5D8C3E]/50 font-bold animate-pulse';
+          document.getElementById('lastOutcomePill').textContent = 'Live Phone Call in Progress';
+          document.getElementById('endCallBtn').disabled = false;
+          document.getElementById('triggerSilenceTimeoutBtn').disabled = true;
+
+          renderLiveTranscript();
+
+          clearInterval(callDurationInterval);
+          clearInterval(silenceTimerInterval);
+
+          callDurationInterval = setInterval(() => {
+            if (!activeCall || activeCall.ended) return;
+            activeCall.duration_seconds = Math.max(1, Math.round((Date.now() - activeCall.startedAtMs) / 1000));
+            const mins = String(Math.floor(activeCall.duration_seconds / 60)).padStart(2, '0');
+            const secs = String(activeCall.duration_seconds % 60).padStart(2, '0');
+            document.getElementById('callDurationText').textContent = `${mins}:${secs}`;
+          }, 500);
+
+          // Refresh database reports and customer table
+          if (typeof fetchCallsFromBackend === 'function') {
+            setTimeout(fetchCallsFromBackend, 1200);
+          }
+
+        } else if (data.status === 'simulated') {
+          showToast('Twilio Simulation Active', data.message, 'amber');
+          // Fall back gracefully to active simulated call
+          isRealTelephonyMode = false;
+          setTelephonyMode(false);
+          await startCallForCustomer(customer.customer_id, false);
+          isRealTelephonyMode = true;
+          setTelephonyMode(true);
+        } else {
+          showToast('Telephony Error', data.detail || 'Could not place outbound call', 'rose');
+        }
+      } catch (err) {
+        showToast('Network Error', err.message, 'rose');
+      }
+    }
+
+    // =========================================================================
     // 7. CALL LIFECYCLE: START, 15s SILENCE TIMER, MID-CALL STOP, SAVE TO DB
     // =========================================================================
     async function startCallForCustomer(customerId, isAutoPlay = false) {
@@ -1745,6 +1949,12 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       selectedCustomerId = customerId;
       renderCustomerTable();
       updateSelectedCustomerHeader();
+
+      // IF REAL CALL MODE IS ON (and not a scenario script replay), EXECUTE REAL OUTBOUND TWILIO CALL!
+      if (isRealTelephonyMode && !isAutoPlay) {
+        await executeRealOutboundCall(customer);
+        return;
+      }
 
       const windowCheck = checkCallWindowAllowed();
       let simHour = null;
@@ -2160,8 +2370,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
               <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.language === 'Hindi' ? 'bg-[#D4A056]/20 text-[#6B4423]' : 'bg-[#4B8FB8]/15 text-[#4B8FB8]'}">${c.language}</span>
             </td>
             <td class="py-2.5 px-3 text-right">
-              <button type="button" data-dial-customer="${c.customer_id}" class="px-3 py-1 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium transition shadow-sm">
-                Call
+              <button type="button" data-dial-customer="${c.customer_id}" class="px-3 py-1 rounded-full ${isRealTelephonyMode ? 'bg-[#5D8C3E] hover:bg-[#4d7533] text-[#FDF8F0] font-semibold shadow-sm' : 'bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium shadow-sm'} transition text-xs inline-flex items-center gap-1">
+                <span>${isRealTelephonyMode ? '📱 Real Call' : '📞 Call'}</span>
               </button>
             </td>
           </tr>
@@ -2491,6 +2701,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      setTelephonyMode(false, false);
       renderCustomerTable();
       updateSelectedCustomerHeader();
       updateClockHeaderUI();
@@ -2527,6 +2738,13 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           updateSelectedCustomerHeader();
         }
       });
+
+      const telephonyToggle = document.getElementById('telephonyModeToggle');
+      if (telephonyToggle) {
+        telephonyToggle.addEventListener('change', (e) => {
+          setTelephonyMode(e.target.checked);
+        });
+      }
 
       document.getElementById('startCallBtn').addEventListener('click', () => {
         startCallForCustomer(selectedCustomerId);

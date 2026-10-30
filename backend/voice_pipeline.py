@@ -451,10 +451,10 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
     groq_key = _get_groq_key()
     if not groq_key or Groq is None:
         return None
-    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    models = ["qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
     for model_name in models:
         try:
-            client = Groq(api_key=groq_key, timeout=1.0, max_retries=0)
+            client = Groq(api_key=groq_key, timeout=0.8, max_retries=0)
             completion = client.chat.completions.create(
                 model=model_name,
                 messages=[
