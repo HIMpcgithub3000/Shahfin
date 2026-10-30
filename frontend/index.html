@@ -409,6 +409,9 @@
                 <button id="startCallBtn" type="button" class="px-4 py-2 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5">
                   <span>📞 Dial Selected Customer</span>
                 </button>
+                <button id="dialTwilioBtn" type="button" class="px-3.5 py-2 rounded-full bg-[#B8763D]/15 text-[#3D2817] border border-[#B8763D]/35 font-medium text-xs sm:text-sm transition hover:bg-[#B8763D]/25 flex items-center gap-1.5" title="Trigger a real phone call via Twilio/Exotel (Bonus #5)">
+                  <span>📱 Real Phone Call (Twilio)</span>
+                </button>
                 <button id="endCallBtn" type="button" disabled class="px-3.5 py-2 rounded-full bg-[#C0392B]/12 text-[#C0392B] border border-[#C0392B]/30 font-medium text-xs sm:text-sm transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#C0392B] hover:text-white">
                   ⏹ End / Drop Midway
                 </button>
@@ -507,8 +510,17 @@
                   <button type="button" data-quick-reply="वो बाहर गए हैं, पता नहीं कब आएंगे।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#EADBC0]/70 hover:bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 text-[11px] font-medium transition">
                     👤 Relative: Out, No Callback Time
                   </button>
-                  <button type="button" data-quick-reply="हो, मीच बोलत आहे. माझे जन्म वर्ष १९८५ आहे." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#B8763D]/15 hover:bg-[#B8763D]/25 text-[#3D2817] border border-[#B8763D]/35 text-[11px] font-medium transition">
-                    🚩 Marathi Switch (Bonus)
+                  <button type="button" data-quick-reply="मला मराठीत बोला" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#B8763D]/15 hover:bg-[#B8763D]/25 text-[#3D2817] border border-[#B8763D]/35 text-[11px] font-medium transition" title="Switch language to Marathi mid-call (Bonus #2)">
+                    🚩 Switch to Marathi (Bonus #2)
+                  </button>
+                  <button type="button" data-quick-reply="Please speak in English" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#4B8FB8]/15 hover:bg-[#4B8FB8]/25 text-[#3D2817] border border-[#4B8FB8]/35 text-[11px] font-medium transition" title="Switch language to English mid-call (Bonus #2)">
+                    🇬🇧 Switch to English (Bonus #2)
+                  </button>
+                  <button type="button" data-quick-reply="हिंदी में बात करो" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#5D8C3E]/15 hover:bg-[#5D8C3E]/25 text-[#3D2817] border border-[#5D8C3E]/35 text-[11px] font-medium transition" title="Switch language to Hindi mid-call (Bonus #2)">
+                    🇮🇳 Switch to Hindi (Bonus #2)
+                  </button>
+                  <button type="button" data-quick-reply="शाम 6:30 बजे फोन करना" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#D4A056]/20 hover:bg-[#D4A056]/30 text-[#3D2817] border border-[#D4A056]/40 text-[11px] font-medium transition" title="Callback with strict ISO format 18:30:00 (Bonus #4)">
+                    🕒 Callback: 6:30 PM (ISO 18:30:00)
                   </button>
                 </div>
 
@@ -672,6 +684,7 @@
                 <div id="detailSummaryLines" class="text-xs text-[#3D2817] space-y-1.5 leading-relaxed">
                   <!-- Populated by JS -->
                 </div>
+                <div id="detailAudioPlayerContainer" class="hidden"></div>
               </div>
 
               <!-- Full Transcript -->
@@ -2363,7 +2376,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
       const cbBadge = document.getElementById('detailCallbackBadge');
       if (call.callback_time) {
-        cbBadge.textContent = `Callback: ${call.callback_time}`;
+        cbBadge.textContent = `Callback: ${call.callback_time}${call.callback_time_iso ? ' (ISO: ' + call.callback_time_iso + ')' : ''}`;
         cbBadge.classList.remove('hidden');
       } else {
         cbBadge.classList.add('hidden');
@@ -2372,6 +2385,25 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       document.getElementById('detailSummaryLines').innerHTML = call.summary_3line
         .map(line => `<p>${line}</p>`)
         .join('');
+
+      const audioContainer = document.getElementById('detailAudioPlayerContainer');
+      if (audioContainer) {
+        if (call.call_id) {
+          audioContainer.innerHTML = `
+            <div class="mt-2.5 pt-2.5 border-t border-[#6B4423]/15 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-1.5 text-xs font-semibold text-[#3D2817]">
+                <span>🎙️</span>
+                <span>Call Audio Recording:</span>
+                ${call.audio_path ? `<span class="mono text-[10px] text-[#6B5541] bg-[#EADBC0]/50 px-2 py-0.5 rounded border border-[#6B4423]/20">${call.audio_path}</span>` : '<span class="mono text-[10px] text-[#5D8C3E]">Neural Full Track</span>'}
+              </div>
+              <audio controls class="h-8 max-w-[240px]" src="/api/calls/${call.call_id}/audio" preload="none"></audio>
+            </div>
+          `;
+          audioContainer.classList.remove('hidden');
+        } else {
+          audioContainer.classList.add('hidden');
+        }
+      }
 
       document.getElementById('detailTranscriptList').innerHTML = call.transcript
         .map(t => `
@@ -2498,6 +2530,34 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
       document.getElementById('startCallBtn').addEventListener('click', () => {
         startCallForCustomer(selectedCustomerId);
+      });
+
+      document.getElementById('dialTwilioBtn').addEventListener('click', async () => {
+        const cust = currentCustomer || customers.find(c => c.customer_id === selectedCustomerId) || customers[0];
+        const targetPhone = prompt(`📱 Real Phone Call (Twilio/Exotel)\nEnter phone number in E.164 format:\nCustomer: ${cust ? cust.name : 'Borrower'}`, cust ? cust.phone : '+91');
+        if (!targetPhone) return;
+        try {
+          showToast('Placing Real Phone Call', `Calling ${targetPhone} via Twilio outbound telephony...`, 'indigo');
+          const resp = await fetch('/api/telephony/outbound', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customer_id: cust ? cust.customer_id : 'C001',
+              phone_number: targetPhone,
+              language: document.getElementById('manualLangSelect').value !== 'Auto' ? document.getElementById('manualLangSelect').value : (cust ? cust.language : 'Hindi')
+            })
+          });
+          const data = await resp.json();
+          if (data.status === 'success') {
+            showToast('Twilio Call Live', `Call SID: ${data.sid}. Outbound call connected to ${targetPhone}!`, 'green');
+          } else if (data.status === 'simulated') {
+            showToast('Twilio Simulation Active', data.message, 'amber');
+          } else {
+            showToast('Telephony Error', data.detail || 'Could not place outbound call', 'red');
+          }
+        } catch (err) {
+          showToast('Network Error', err.message, 'red');
+        }
       });
 
       document.getElementById('endCallBtn').addEventListener('click', () => {

@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS Call (
     outcome VARCHAR(40) NOT NULL,
     language VARCHAR(20) NOT NULL,
     callback_time VARCHAR(50) NULL,
+    callback_time_iso VARCHAR(10) NULL,
+    audio_path VARCHAR(255) NULL,
     transcript TEXT NOT NULL,
     summary_3line TEXT NOT NULL
 );
@@ -71,6 +73,8 @@ CREATE TABLE IF NOT EXISTS Call (
     outcome TEXT NOT NULL,
     language TEXT NOT NULL,
     callback_time TEXT NULL,
+    callback_time_iso TEXT NULL,
+    audio_path TEXT NULL,
     transcript TEXT NOT NULL,
     summary_3line TEXT NOT NULL
 );
@@ -108,6 +112,28 @@ def get_connection():
     return conn
 
 
+def _ensure_schema_columns(cur, conn) -> None:
+    """Migrates schema dynamically to support audio_path and callback_time_iso."""
+    try:
+        if is_postgres(conn):
+            cur.execute("ALTER TABLE Call ADD COLUMN IF NOT EXISTS callback_time_iso VARCHAR(10) NULL;")
+            cur.execute("ALTER TABLE Call ADD COLUMN IF NOT EXISTS audio_path VARCHAR(255) NULL;")
+        else:
+            cur.execute("PRAGMA table_info(Call);")
+            cols = [r[1] for r in cur.fetchall()]
+            if "callback_time_iso" not in cols:
+                cur.execute("ALTER TABLE Call ADD COLUMN callback_time_iso TEXT NULL;")
+            if "audio_path" not in cols:
+                cur.execute("ALTER TABLE Call ADD COLUMN audio_path TEXT NULL;")
+        conn.commit()
+    except Exception as e:
+        print(f"[DB Schema Notice] Schema migration check: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+
 def init_db_and_seed_customers(csv_path: str) -> None:
     """Initializes tables and seeds the 10 dummy customers if table is empty."""
     conn = get_connection()
@@ -117,6 +143,7 @@ def init_db_and_seed_customers(csv_path: str) -> None:
     else:
         cur.executescript(SQLITE_DDL)
     conn.commit()
+    _ensure_schema_columns(cur, conn)
 
     cur.execute("SELECT COUNT(*) FROM Customer")
     count = cur.fetchone()[0]
@@ -325,16 +352,21 @@ def finalize_call_record(
     duration_seconds: int,
     outcome: str,
     summary_3line: Optional[List[str]] = None,
+    callback_time: Optional[str] = None,
+    callback_time_iso: Optional[str] = None,
+    audio_path: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> None:
-    """Finalizes duration, outcome, and 3-line summary at call termination."""
+    """Finalizes duration, outcome, audio path, callback time, and 3-line summary at call termination."""
     conn = get_connection()
     cur = conn.cursor()
+    _ensure_schema_columns(cur, conn)
     execute_sql(cur, conn, "SELECT customer_id, connected, language, summary_3line FROM Call WHERE call_id = ?", (call_id,))
     row = cur.fetchone()
     if row:
         cust_id = row[0]
         connected_val = bool(row[1])
-        lang = row[2]
+        lang = language or row[2]
         if summary_3line:
             sum_str = "\n".join(summary_3line) if isinstance(summary_3line, list) else str(summary_3line)
         else:
@@ -348,10 +380,14 @@ def finalize_call_record(
         UPDATE Call SET
             duration_seconds = ?,
             outcome = ?,
-            summary_3line = ?
+            summary_3line = ?,
+            language = COALESCE(?, language),
+            callback_time = COALESCE(?, callback_time),
+            callback_time_iso = COALESCE(?, callback_time_iso),
+            audio_path = COALESCE(?, audio_path)
         WHERE call_id = ?
         """
-        execute_sql(cur, conn, update_sql, (duration_seconds, outcome, sum_str, call_id))
+        execute_sql(cur, conn, update_sql, (duration_seconds, outcome, sum_str, language, callback_time, callback_time_iso, audio_path, call_id))
         conn.commit()
     conn.close()
 
@@ -368,9 +404,12 @@ def save_call_record(
     transcript: List[Dict[str, Any]],
     summary_3line: List[str],
     mark_do_not_call: bool = False,
+    callback_time_iso: Optional[str] = None,
+    audio_path: Optional[str] = None,
 ) -> None:
     conn = get_connection()
     cur = conn.cursor()
+    _ensure_schema_columns(cur, conn)
     if mark_do_not_call:
         execute_sql(cur, conn, "UPDATE Customer SET do_not_call = 1 WHERE customer_id = ?", (customer_id,))
 
@@ -379,8 +418,8 @@ def save_call_record(
     summary_str = "\n".join(summary_3line) if isinstance(summary_3line, list) else str(summary_3line)
 
     upsert_sql = """
-    INSERT INTO Call (call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, transcript, summary_3line)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO Call (call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, callback_time_iso, audio_path, transcript, summary_3line)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(call_id) DO UPDATE SET
         customer_id = excluded.customer_id,
         start_time = excluded.start_time,
@@ -389,6 +428,8 @@ def save_call_record(
         outcome = excluded.outcome,
         language = excluded.language,
         callback_time = excluded.callback_time,
+        callback_time_iso = excluded.callback_time_iso,
+        audio_path = excluded.audio_path,
         transcript = excluded.transcript,
         summary_3line = excluded.summary_3line;
     """
@@ -401,16 +442,33 @@ def save_call_record(
             customer_id,
             start_str,
             duration_seconds,
-            int(connected),
+            1 if connected else 0,
             outcome,
             language,
             callback_time,
+            callback_time_iso,
+            audio_path,
             transcript_str,
             summary_str,
         ),
     )
     conn.commit()
     conn.close()
+
+
+def get_call(call_id: str) -> Optional[Dict[str, Any]]:
+    conn = get_connection()
+    cur = conn.cursor()
+    _ensure_schema_columns(cur, conn)
+    execute_sql(cur, conn, "SELECT * FROM Call WHERE call_id = ?", (call_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return None
+    cols = [d[0] for d in cur.description]
+    call_dict = dict(zip(cols, row))
+    conn.close()
+    return call_dict
 
 
 def clear_calls() -> None:
@@ -424,10 +482,11 @@ def clear_calls() -> None:
 def get_report_stats() -> Dict[str, Any]:
     conn = get_connection()
     cur = conn.cursor()
+    _ensure_schema_columns(cur, conn)
     execute_sql(
         cur,
         conn,
-        "SELECT call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, transcript, summary_3line FROM Call ORDER BY call_id DESC",
+        "SELECT call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, transcript, summary_3line, callback_time_iso, audio_path FROM Call ORDER BY call_id DESC",
     )
     rows = cur.fetchall()
     conn.close()
@@ -467,6 +526,8 @@ def get_report_stats() -> Dict[str, Any]:
                 "callback_time": r[7],
                 "transcript": trans,
                 "summary_3line": summ,
+                "callback_time_iso": r[10] if len(r) > 10 else None,
+                "audio_path": r[11] if len(r) > 11 else None,
             }
         )
 
@@ -524,8 +585,8 @@ def seed_test_calls(test_calls_csv_path: str, customers_csv_path: Optional[str] 
             execute_sql(
                 cur,
                 conn,
-                """INSERT INTO Call (call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, transcript, summary_3line)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO Call (call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, callback_time_iso, audio_path, transcript, summary_3line)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     call_id,
                     cid,
@@ -535,6 +596,8 @@ def seed_test_calls(test_calls_csv_path: str, customers_csv_path: Optional[str] 
                     outcome,
                     lang,
                     "6:30 PM" if outcome == "Callback requested" else None,
+                    "18:30:00" if outcome == "Callback requested" else None,
+                    None,
                     json.dumps(transcript, ensure_ascii=False),
                     summary,
                 ),

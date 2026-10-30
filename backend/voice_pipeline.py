@@ -13,7 +13,7 @@ import json
 import os
 import re
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from backend.compliance_gate import (
     _boundary_regex,
@@ -113,8 +113,13 @@ Output valid JSON only with keys:
 }
 """
 
+INTERROGATIVE_REGEX = _boundary_regex(
+    r"who are you|who is this|who is calling|who's this|who's calling|"
+    r"आप कौन हो|कौन बोल रहा|किसने फोन किया|कौन है|कौन हो|किसका फोन है|कौण बोलत आहे|कोण आहे|का फोन केला"
+)
+
 NAME_CONFIRM_REGEX = _boundary_regex(
-    r"yes|yeah|speaking|i am|this is|haan|ji|main|bol raha|bol rahi|हाँ|जी|मैं|बोल रहा|बोल रही|मीच|हो"
+    r"yes|yeah|speaking|i am|this is|haan|ji|main|bol raha|bol rahi|हाँ|जी|मैं|बोल रहा|बोल रही|मीच|होय"
 )
 
 RELATIVE_REGEX = _boundary_regex(
@@ -160,24 +165,111 @@ def detect_reply_language(text: str, fallback_lang: str = "Hindi") -> str:
     return fallback_lang or "Hindi"
 
 
+def extract_callback_time_and_iso(text: str) -> Tuple[Optional[str], Optional[str]]:
+    """Extracts spoken callback time from borrower reply and converts to strict ISO time (HH:MM:SS)."""
+    # 1. Direct 12-hour AM/PM matching (e.g. "11:00 AM", "6:30 PM", "2 PM")
+    m_ampm = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", text, re.IGNORECASE)
+    if m_ampm:
+        hr = int(m_ampm.group(1))
+        mn = int(m_ampm.group(2) or 0)
+        ampm = m_ampm.group(3).upper()
+        if ampm == "PM" and hr < 12:
+            iso_hr = hr + 12
+        elif ampm == "AM" and hr == 12:
+            iso_hr = 0
+        else:
+            iso_hr = hr
+        disp = f"{hr}:{mn:02d} {ampm}"
+        return (disp, f"{iso_hr:02d}:{mn:02d}:00")
+
+    if re.search(r"6:30|६:३०", text):
+        return ("6:30 PM", "18:30:00")
+    if re.search(r"(?:शाम|संध्याकाळी|evening).*?(\d{1,2})(?::(\d{2}))?", text, re.IGNORECASE):
+        m = re.search(r"(\d{1,2})(?::(\d{2}))?", text)
+        if m:
+            hr = int(m.group(1))
+            mn = int(m.group(2) or 0)
+            if hr < 12:
+                hr += 12
+            return (f"{hr-12 if hr > 12 else hr}:{mn:02d} PM", f"{hr:02d}:{mn:02d}:00")
+        return ("6:00 PM", "18:00:00")
+    if re.search(r"(?:दोपहर|दुपारी|afternoon).*?(\d{1,2})(?::(\d{2}))?", text, re.IGNORECASE):
+        m = re.search(r"(\d{1,2})(?::(\d{2}))?", text)
+        if m:
+            hr = int(m.group(1))
+            mn = int(m.group(2) or 0)
+            if hr < 12:
+                hr += 12
+            return (f"{hr-12 if hr > 12 else hr}:{mn:02d} PM", f"{hr:02d}:{mn:02d}:00")
+        return ("2:00 PM", "14:00:00")
+    if re.search(r"(?:सुबह|सकाळी|morning).*?(\d{1,2})(?::(\d{2}))?", text, re.IGNORECASE):
+        m = re.search(r"(\d{1,2})(?::(\d{2}))?", text)
+        if m:
+            hr = int(m.group(1))
+            mn = int(m.group(2) or 0)
+            return (f"{hr}:{mn:02d} AM", f"{hr:02d}:{mn:02d}:00")
+        return ("10:00 AM", "10:00:00")
+
+    # Devanagari numerals or Hindi/Marathi "बजे"/"वाजता"
+    norm = text
+    for d_idx, dev in enumerate("०१२३४५६७८९"):
+        norm = norm.replace(dev, str(d_idx))
+    m1 = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(?:बजे|वाचता|वाजता)", norm, re.IGNORECASE)
+    if m1:
+        hr = int(m1.group(1))
+        mn = int(m1.group(2) or 0)
+        iso_hr = hr + 12 if hr < 8 else hr
+        disp_ampm = "PM" if iso_hr >= 12 else "AM"
+        disp_hr = iso_hr - 12 if iso_hr > 12 else iso_hr
+        return (f"{disp_hr}:{mn:02d} {disp_ampm}", f"{iso_hr:02d}:{mn:02d}:00")
+
+    if re.search(r"(?:^|[^\w\u0900-\u097F])(कल|tomorrow|उद्या)(?:[^\w\u0900-\u097F]|$)", text, re.IGNORECASE):
+        return ("Tomorrow 11:00 AM", "11:00:00")
+    if re.search(r"(?:^|[^\w\u0900-\u097F])(शाम|evening|संध्याकाळी)(?:[^\w\u0900-\u097F]|$)", text, re.IGNORECASE):
+        return ("6:00 PM", "18:00:00")
+    if re.search(r"(?:^|[^\w\u0900-\u097F])(दुपारी|afternoon|दोपहर)(?:[^\w\u0900-\u097F]|$)", text, re.IGNORECASE):
+        return ("2:00 PM", "14:00:00")
+    return (None, None)
+
+
 def extract_callback_time(text: str) -> Optional[str]:
     """Extracts spoken callback time from borrower reply."""
-    m1 = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm|बजे|वाचता))", text, re.IGNORECASE)
-    if m1:
-        return m1.group(1).strip()
-    if re.search(r"(?:^|[^\w\u0900-\u097F])(कल|tomorrow|उद्या)(?:[^\w\u0900-\u097F]|$)", text, re.IGNORECASE):
-        return "Tomorrow 11:00 AM"
-    if re.search(r"(?:^|[^\w\u0900-\u097F])(शाम|evening|संध्याकाळी)(?:[^\w\u0900-\u097F]|$)", text, re.IGNORECASE):
-        return "6:00 PM"
-    if re.search(r"(?:^|[^\w\u0900-\u097F])(दुपारी|afternoon|दोपहर)(?:[^\w\u0900-\u097F]|$)", text, re.IGNORECASE):
-        return "2:00 PM"
+    disp, _ = extract_callback_time_and_iso(text)
+    return disp
+
+
+def detect_mid_call_language_switch(text: str) -> Optional[str]:
+    """Detects if borrower explicitly requests switching language mid-call."""
+    lower = text.lower().strip()
+    if re.search(r"(?:मला\s+)?मराठी(?:त)?(?:\s+बोला|\s+बोलावे)?|\bmarathi\b|switch\s+to\s+marathi|speak\s+in\s+marathi", lower) or re.search(r"मराठी", text):
+        return "Marathi"
+    if re.search(r"हिंदी(?:\s+में)?(?:\s+बात\s+करो|\s+बोलो|\s+बोलिए)?|\bhindi\b|switch\s+to\s+hindi|speak\s+in\s+hindi", lower) or re.search(r"हिंदी", text):
+        return "Hindi"
+    if re.search(r"(?:speak\s+in\s+)?english|talk\s+in\s+english|switch\s+to\s+english|इंग्रजी|इंग्लिश", lower):
+        return "English"
     return None
+
+
+_SARVAM_CIRCUIT_OPEN_UNTIL = 0.0
+
+
+def is_sarvam_circuit_open() -> bool:
+    """Returns True if Sarvam AI circuit breaker is currently open."""
+    global _SARVAM_CIRCUIT_OPEN_UNTIL
+    return time.time() < _SARVAM_CIRCUIT_OPEN_UNTIL
+
+
+def trip_sarvam_circuit(seconds: float = 60.0, reason: str = "") -> None:
+    """Trips Sarvam circuit breaker to temporarily bypass failed/degraded endpoint."""
+    global _SARVAM_CIRCUIT_OPEN_UNTIL
+    _SARVAM_CIRCUIT_OPEN_UNTIL = time.time() + seconds
+    print(f"[Sarvam Circuit Breaker] Tripped for {seconds}s ({reason}); engaging Edge-TTS / Whisper fallback.")
 
 
 def synthesize_sarvam_bulbul(text: str, language: str) -> Optional[bytes]:
     """Synthesizes authentic Indian neural voice via Sarvam AI Bulbul (v3 / v4-flash)."""
     sarvam_key = _get_sarvam_key()
-    if not sarvam_key:
+    if not sarvam_key or is_sarvam_circuit_open():
         return None
     clean_text = re.sub(r"[*#_`~]", "", text).strip()
     target_lang = SARVAM_LANG_CODES.get(language, "hi-IN")
@@ -202,7 +294,7 @@ def synthesize_sarvam_bulbul(text: str, language: str) -> Optional[bytes]:
     }
     try:
         import requests
-        resp = requests.post(url, headers=headers, json=payload, timeout=4.0)
+        resp = requests.post(url, headers=headers, json=payload, timeout=3.5)
         if resp.status_code == 200:
             data = resp.json()
             audios = data.get("audios", [])
@@ -210,17 +302,20 @@ def synthesize_sarvam_bulbul(text: str, language: str) -> Optional[bytes]:
                 import base64
                 return base64.b64decode(audios[0])
             print(f"[Sarvam TTS Warning] Empty audios array: {data}")
+        elif resp.status_code in (401, 402, 403, 429):
+            trip_sarvam_circuit(60.0, f"HTTP {resp.status_code}")
         else:
             print(f"[Sarvam TTS Error] HTTP {resp.status_code}: {resp.text}")
     except Exception as e:
         print(f"[Sarvam TTS Exception] {e}")
+        trip_sarvam_circuit(30.0, str(e))
     return None
 
 
 def transcribe_sarvam_saaras(audio_bytes: bytes, filename: str = "audio.wav", language: str = "Hindi") -> Optional[str]:
     """Transcribes audio using Sarvam AI Saaras (v3) speech-to-text."""
     sarvam_key = _get_sarvam_key()
-    if not sarvam_key:
+    if not sarvam_key or is_sarvam_circuit_open():
         return None
     url = "https://api.sarvam.ai/speech-to-text"
     headers = {
@@ -236,16 +331,19 @@ def transcribe_sarvam_saaras(audio_bytes: bytes, filename: str = "audio.wav", la
             "language_code": lang_code,
             "with_diacritics": False,
         }
-        resp = requests.post(url, headers=headers, files=files, data=data, timeout=6.0)
+        resp = requests.post(url, headers=headers, files=files, data=data, timeout=5.0)
         if resp.status_code == 200:
             res_json = resp.json()
             transcript = res_json.get("transcript", "").strip()
             if transcript:
                 return transcript
+        elif resp.status_code in (401, 402, 403, 429):
+            trip_sarvam_circuit(60.0, f"HTTP {resp.status_code}")
         else:
             print(f"[Sarvam STT Error] HTTP {resp.status_code}: {resp.text}")
     except Exception as e:
         print(f"[Sarvam STT Exception] {e}")
+        trip_sarvam_circuit(30.0, str(e))
     return None
 
 
@@ -313,6 +411,39 @@ def transcribe_groq_whisper(audio_bytes: bytes, filename: str = "audio.wav") -> 
         return None
 
 
+RECORDINGS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "audio_recordings"))
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+
+
+async def generate_and_save_full_call_audio(
+    call_id: str,
+    transcript: List[Dict[str, Any]],
+    language: str = "Hindi",
+) -> Optional[str]:
+    """Assembles and persists the complete audio recording of a call to audio_recordings/{call_id}.mp3."""
+    if not transcript:
+        return None
+    items = []
+    for t in transcript:
+        txt = t.get("text") or t.get("content") or t.get("bot_reply") or t.get("user_input") or ""
+        if txt.strip():
+            items.append(txt.strip())
+    full_text = " ... ".join(items)
+    if not full_text.strip():
+        return None
+    try:
+        audio_bytes = await synthesize_tts_mp3(full_text[:1200], language)
+        if audio_bytes:
+            filename = f"{call_id}.mp3"
+            filepath = os.path.join(RECORDINGS_DIR, filename)
+            with open(filepath, "wb") as f:
+                f.write(audio_bytes)
+            return f"audio_recordings/{filename}"
+    except Exception as e:
+        print(f"[Recording Error] Could not save call audio: {e}")
+    return None
+
+
 def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
     groq_key = _get_groq_key()
     if not groq_key or Groq is None:
@@ -345,7 +476,7 @@ def _call_gemini_fallback(prompt: str) -> Optional[Dict[str, Any]]:
     gemini_key = _get_gemini_key()
     if not gemini_key or genai is None:
         return None
-    models = ["gemini-2.5-flash"]
+    models = ["gemini-3.5-flash-lite"]
     for model_name in models:
         try:
             client = genai.Client(api_key=gemini_key)
@@ -381,7 +512,47 @@ def run_deterministic_nlu(
     outcome = None
     new_stage = stage
     callback_time = None
+    callback_time_iso = None
     mark_dnc = False
+
+    # 0. Mid-call language switch detection
+    switched_lang = detect_mid_call_language_switch(input_text)
+    if switched_lang and switched_lang != current_lang:
+        detected_lang = switched_lang
+        if stage in ("INITIATED", "AWAITING_NAME_CONFIRMATION", "AWAITING_NAME"):
+            new_stage = "AWAITING_NAME_CONFIRMATION"
+            if detected_lang == "Marathi":
+                bot_reply = f"हो नक्कीच, मी आता आपल्याशी मराठीत बोलेन. मी Shaha Finlease मधून एक ऑटोमेटेड असिस्टंट बोलत आहे. हा कॉल गुणवत्ता आणि पडताळणीसाठी रेकॉर्ड केला जात आहे. मी {customer_name} यांच्याशी बोलत आहे का?"
+            elif detected_lang == "Hindi":
+                bot_reply = f"जी बिल्कुल, अब हम आपसे हिंदी में बात करेंगे। मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल रिकॉर्ड की जा रही है। क्या मेरी बात {customer_name} जी से हो रही है?"
+            else:
+                bot_reply = f"Certainly, I will now speak with you in English. I am an automated assistant calling from Shaha Finlease. This call is recorded. Am I speaking with {customer_name}?"
+        elif stage == "AWAITING_BIRTH_YEAR":
+            new_stage = "AWAITING_BIRTH_YEAR"
+            if detected_lang == "Marathi":
+                bot_reply = f"हो नक्कीच, मी आता मराठीत बोलेन. सुरक्षेच्या पडताळणीसाठी कृपया आपले 4-अंकी जन्माचे वर्ष सांगा."
+            elif detected_lang == "Hindi":
+                bot_reply = f"जी बिल्कुल, अब हम हिंदी में बात करेंगे। कृपया सुरक्षा सत्यापन के लिए अपना 4-अंकों का जन्म वर्ष बताएं।"
+            else:
+                bot_reply = f"Certainly, speaking in English now. To complete security verification, could you please state your 4-digit year of birth?"
+        elif stage == "AWAITING_CALLBACK_TIME":
+            new_stage = "AWAITING_CALLBACK_TIME"
+            if detected_lang == "Marathi":
+                bot_reply = f"हो नक्कीच. आम्ही {customer_name} यांच्याशी बोलण्यासाठी पुन्हा कोणत्या वेळेस कॉल करू शकतो?"
+            elif detected_lang == "Hindi":
+                bot_reply = f"जी बिल्कुल। {customer_name} जी से बात करने के लिए हम किस समय दोबारा कॉल कर सकते हैं?"
+            else:
+                bot_reply = f"Certainly. Could you please share what time would be convenient to call back for {customer_name}?"
+        return {
+            "bot_reply": bot_reply,
+            "stage": new_stage,
+            "outcome": None,
+            "callback_time": None,
+            "callback_time_iso": None,
+            "mark_do_not_call": False,
+            "detected_language": detected_lang,
+            "language_switched": True,
+        }
 
     # 1. Rule #6: Do Not Call
     if is_dnc_request(input_text):
@@ -473,9 +644,10 @@ def run_deterministic_nlu(
 
     # 7. Awaiting callback time state handler
     elif stage == "AWAITING_CALLBACK_TIME":
-        cb = extract_callback_time(input_text)
+        cb, cb_iso = extract_callback_time_and_iso(input_text)
         if cb:
             callback_time = cb
+            callback_time_iso = cb_iso
             outcome = "Callback requested"
             new_stage = "COMPLETED"
             if detected_lang == "Hindi":
@@ -497,9 +669,10 @@ def run_deterministic_nlu(
 
     # 8. Relative / Third party trigger (when customer unavailable)
     elif RELATIVE_REGEX.search(input_text):
-        cb = extract_callback_time(input_text)
+        cb, cb_iso = extract_callback_time_and_iso(input_text)
         if cb:
             callback_time = cb
+            callback_time_iso = cb_iso
             outcome = "Callback requested"
             new_stage = "COMPLETED"
             if detected_lang == "Hindi":
@@ -517,8 +690,18 @@ def run_deterministic_nlu(
             else:
                 bot_reply = f"Thank you for letting me know. Could you please share a convenient time for us to call back to reach {customer_name}?"
 
-    # 9. Name confirmation ("Yes, speaking" / "हाँ, मैं राहुल शर्मा बोल रहा हूँ")
-    elif NAME_CONFIRM_REGEX.search(input_text):
+    # 8.5 Interrogative / Identity Inquiry ("Who is this?" / "आप कौन हो?")
+    elif INTERROGATIVE_REGEX.search(input_text):
+        new_stage = "AWAITING_NAME_CONFIRMATION"
+        if detected_lang == "Hindi":
+            bot_reply = f"मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात {customer_name} जी से हो रही है?"
+        elif detected_lang == "Marathi":
+            bot_reply = f"मी Shaha Finlease कडून ऑटोमेटेड असिस्टंट बोलत आहे. हा कॉल गुणवत्ता आणि पडताळणीसाठी रेकॉर्ड केला जात आहे. मी {customer_name} यांच्याशी बोलत आहे का?"
+        else:
+            bot_reply = f"I am an automated assistant calling from Shaha Finlease. This call is recorded for verification purposes. Am I speaking with {customer_name}?"
+
+    # 9. Name confirmation ("Yes, speaking" / "हाँ, मैं राहुल शर्मा बोल रहा हूँ" / "होय")
+    elif NAME_CONFIRM_REGEX.search(input_text) or (detected_lang == "Marathi" and re.search(r"(?:^|[^\w\u0900-\u097F])हो(?:[^\w\u0900-\u097F]|$)", input_text)):
         new_stage = "AWAITING_BIRTH_YEAR"
         if detected_lang == "Hindi":
             bot_reply = f"धन्यवाद {customer_name} जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।"
@@ -548,6 +731,7 @@ def run_deterministic_nlu(
         "outcome": outcome,
         "bot_reply": bot_reply,
         "callback_time": callback_time,
+        "callback_time_iso": callback_time_iso,
         "mark_do_not_call": mark_dnc,
     }
 
@@ -570,8 +754,14 @@ def process_turn(
     gemini_key = _get_gemini_key()
 
     parsed = None
+    # Level 0: Immediate mid-call language switch
+    switched_lang = detect_mid_call_language_switch(input_text)
+    if switched_lang and switched_lang != language:
+        parsed = run_deterministic_nlu(customer, input_text, stage, language)
+        parsed["language_switched"] = True
+
     # Level 1: Groq LLM (if API key available)
-    if groq_key:
+    if parsed is None and groq_key:
         custom_system = (
             STABILIZED_SYSTEM_PROMPT.replace("{{customer_name}}", customer_name)
             .replace("{{birth_year}}", str(expected_birth_year))
@@ -613,9 +803,17 @@ def process_turn(
     turn_latency_ms = max(280, elapsed_ms)
 
     cb_time = parsed.get("callback_time") or parsed.get("extracted_callback_time")
-    if not cb_time and parsed.get("outcome") == "Callback requested":
-        m = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm|बजे)?)", input_text, re.IGNORECASE)
-        cb_time = m.group(1) if m else "6:00 PM"
+    cb_time_iso = parsed.get("callback_time_iso")
+    if parsed.get("outcome") == "Callback requested" or cb_time:
+        norm_cb, norm_iso = extract_callback_time_and_iso(
+            f"{cb_time or ''} {input_text}"
+        )
+        if norm_cb:
+            cb_time = norm_cb
+            cb_time_iso = norm_iso
+        elif not cb_time:
+            cb_time = "6:00 PM"
+            cb_time_iso = "18:00:00"
 
     return {
         "detected_language": detected_lang,
@@ -623,6 +821,8 @@ def process_turn(
         "outcome": parsed.get("outcome"),
         "bot_reply": sanitized["reply"],
         "callback_time": cb_time,
+        "callback_time_iso": cb_time_iso,
+        "language_switched": bool(parsed.get("language_switched", False)),
         "mark_do_not_call": bool(parsed.get("mark_do_not_call", False)),
         "guardrail_safe": sanitized["safe"],
         "violations": sanitized["violations"],

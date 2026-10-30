@@ -15,8 +15,10 @@ from backend.compliance_gate import check_pre_call_gate
 from backend.db import (
     clear_calls,
     create_initial_call_record,
+    execute_sql,
     finalize_call_record,
     get_all_customers,
+    get_connection,
     get_customer,
     get_next_call_id,
     get_report_stats,
@@ -28,6 +30,8 @@ from backend.db import (
     update_customer_dnc,
 )
 from backend.voice_pipeline import (
+    RECORDINGS_DIR,
+    generate_and_save_full_call_audio,
     generate_opening_disclosure,
     process_turn,
     synthesize_tts_mp3,
@@ -101,6 +105,10 @@ class FinalizeCallRequest(BaseModel):
     duration_seconds: int = 0
     outcome: Optional[str] = None
     summary_3line: Optional[List[str]] = None
+    callback_time: Optional[str] = None
+    callback_time_iso: Optional[str] = None
+    audio_path: Optional[str] = None
+    language: Optional[str] = None
 
 
 class SaveCallRequest(BaseModel):
@@ -112,9 +120,17 @@ class SaveCallRequest(BaseModel):
     outcome: str
     language: str
     callback_time: Optional[str] = None
+    callback_time_iso: Optional[str] = None
+    audio_path: Optional[str] = None
     transcript: List[Dict[str, Any]]
     summary_3line: List[str]
     mark_do_not_call: bool = False
+
+
+class TelephonyOutboundRequest(BaseModel):
+    phone_number: str
+    customer_id: str = "C001"
+    language: str = "Hindi"
 
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
@@ -259,15 +275,34 @@ def execute_borrower_turn(req: TurnRequest) -> Dict[str, Any]:
 
 
 @app.post("/api/calls/finalize")
-def finalize_call(req: FinalizeCallRequest) -> Dict[str, Any]:
-    """Finalizes call outcome, duration, and 3-line summary in dbo.Call."""
+async def finalize_call(req: FinalizeCallRequest) -> Dict[str, Any]:
+    """Finalizes call outcome, duration, audio recording, and 3-line summary in dbo.Call."""
+    audio_path = req.audio_path
+    if not audio_path and req.call_id:
+        conn = get_connection()
+        cur = conn.cursor()
+        execute_sql(cur, conn, "SELECT transcript, language FROM Call WHERE call_id = ?", (req.call_id,))
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            try:
+                trans = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+                lang = req.language or row[1] or "Hindi"
+                audio_path = await generate_and_save_full_call_audio(req.call_id, trans, lang)
+            except Exception as e:
+                print(f"[Recording notice] {e}")
+
     finalize_call_record(
         call_id=req.call_id,
         duration_seconds=req.duration_seconds,
         outcome=req.outcome or "Not connected",
         summary_3line=req.summary_3line,
+        callback_time=req.callback_time,
+        callback_time_iso=req.callback_time_iso,
+        audio_path=audio_path,
+        language=req.language,
     )
-    return {"status": "finalized", "call_id": req.call_id}
+    return {"status": "finalized", "call_id": req.call_id, "audio_path": audio_path}
 
 
 @app.post("/api/calls/save")
@@ -284,8 +319,115 @@ def save_call(req: SaveCallRequest) -> Dict[str, Any]:
         transcript=req.transcript,
         summary_3line=req.summary_3line,
         mark_do_not_call=req.mark_do_not_call,
+        callback_time_iso=req.callback_time_iso,
+        audio_path=req.audio_path,
     )
     return {"status": "saved", "call_id": req.call_id, "outcome": req.outcome}
+
+
+@app.get("/api/calls/{call_id}/audio")
+def get_call_audio_endpoint(call_id: str):
+    """Bonus #3: Serves the persisted MP3 or WAV recording for the call."""
+    file_mp3 = os.path.join(RECORDINGS_DIR, f"{call_id}.mp3")
+    file_wav = os.path.join(RECORDINGS_DIR, f"{call_id}.wav")
+    if os.path.exists(file_mp3):
+        return FileResponse(file_mp3, media_type="audio/mpeg", filename=f"{call_id}.mp3")
+    if os.path.exists(file_wav):
+        return FileResponse(file_wav, media_type="audio/wav", filename=f"{call_id}.wav")
+    raise HTTPException(status_code=404, detail="Call audio recording not found")
+
+
+@app.post("/api/telephony/outbound")
+def initiate_real_phone_call(req: TelephonyOutboundRequest) -> Dict[str, Any]:
+    """Bonus #5: Places a real outbound phone call via Twilio trial API."""
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+    from_phone = os.getenv("TWILIO_PHONE_NUMBER", "").strip()
+    base_url = os.getenv("BASE_WEBHOOK_URL", "http://localhost:8000").strip()
+
+    customer = get_customer(req.customer_id)
+    if not account_sid or not auth_token or not from_phone:
+        return {
+            "status": "simulated",
+            "message": "Twilio trial credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) not set in .env. Mock call simulated.",
+            "phone_number": req.phone_number,
+            "customer_id": req.customer_id,
+            "customer": customer,
+        }
+
+    try:
+        from twilio.rest import Client
+        client = Client(account_sid, auth_token)
+        call_id = get_next_call_id()
+        tw_call = client.calls.create(
+            to=req.phone_number,
+            from_=from_phone,
+            url=f"{base_url}/api/telephony/twilio/voice?customer_id={req.customer_id}&lang={req.language}&call_id={call_id}",
+            status_callback=f"{base_url}/api/telephony/twilio/status?call_id={call_id}",
+            status_callback_event=["completed"],
+        )
+        return {
+            "status": "success",
+            "sid": tw_call.sid,
+            "call_id": call_id,
+            "to": req.phone_number,
+        }
+    except Exception as e:
+        print(f"[Twilio Error] {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+@app.api_route("/api/telephony/twilio/voice", methods=["GET", "POST"])
+def twilio_voice_webhook(
+    customer_id: str = Query("C001"),
+    lang: str = Query("Hindi"),
+    call_id: Optional[str] = Query(None),
+) -> Response:
+    """Twilio Webhook: Initial TwiML when borrower answers the phone."""
+    customer = get_customer(customer_id)
+    cust_name = customer["name"] if customer else "Customer"
+    opening = generate_opening_disclosure(cust_name, lang)
+
+    twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech" action="/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={call_id or ''}" language="{twiml_lang}" speechTimeout="auto">
+        <Say language="{twiml_lang}">{opening}</Say>
+    </Gather>
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
+
+
+@app.api_route("/api/telephony/twilio/turn", methods=["GET", "POST"])
+def twilio_turn_webhook(
+    SpeechResult: Optional[str] = Form(None),
+    customer_id: str = Query("C001"),
+    lang: str = Query("Hindi"),
+    call_id: Optional[str] = Query(None),
+    stage: str = Query("AWAITING_NAME_CONFIRMATION"),
+) -> Response:
+    """Twilio Webhook: Turn processing from SpeechResult."""
+    customer = get_customer(customer_id)
+    speech_text = SpeechResult or ""
+    res = process_turn(customer, speech_text, stage, lang)
+    bot_reply = res.get("bot_reply", "")
+    new_stage = res.get("stage", "COMPLETED")
+    twiml_lang = "hi-IN" if res.get("detected_language") == "Hindi" else ("mr-IN" if res.get("detected_language") == "Marathi" else "en-IN")
+
+    if new_stage == "COMPLETED" or res.get("outcome"):
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say language="{twiml_lang}">{bot_reply}</Say>
+    <Hangup/>
+</Response>"""
+    else:
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech" action="/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={res.get('detected_language', lang)}&amp;call_id={call_id or ''}&amp;stage={new_stage}" language="{twiml_lang}" speechTimeout="auto">
+        <Say language="{twiml_lang}">{bot_reply}</Say>
+    </Gather>
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
 
 
 @app.get("/api/report")

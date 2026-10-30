@@ -294,26 +294,71 @@ The UI features two integrated screens: **Call Console** and **Report & Call Log
 
 ---
 
+## 🌟 Assignment Bonus Features (All 5 Implemented)
+
+The voicebot fully implements and verifies all **5 assignment bonus capabilities**:
+
+1. **Native Marathi (मराठी) Support**:
+   - Integrated with Sarvam AI `bulbul:v3` / `bulbul:v4-flash` for high-fidelity Marathi female neural voice (`mr-IN-AarohiNeural` fallback).
+   - Accurately parses Devanagari numerals (`१९८५` -> `1985`) and Marathi colloquialisms (`होय`, `मीच बोलतोय`, `संध्याकाळी ६ वाजता`).
+2. **Switching Language Mid-Call**:
+   - The borrower can request to change languages at any turn (e.g. saying *"मला मराठीत बोला"*, *"Please speak in English"*, or *"हिंदी में बात करो"*).
+   - The bot dynamically detects language change requests, acknowledges the switch in the target language, and continues the exact conversation state without dropping context.
+3. **Saving Complete Call Audio**:
+   - Every finalized call synthesizes and stores the complete conversation audio to disk in `audio_recordings/{call_id}.mp3`.
+   - The relative file path is persisted in `dbo.Call.audio_path` and streamed via `GET /api/calls/{call_id}/audio`.
+4. **Capturing Callback Time as a Strict Time Field**:
+   - Natural language callback requests (e.g. *"शाम 6:30 बजे"*, *"दुपारी २ वाजता"*, *"tomorrow at 11:00 AM"*) are parsed into both a human-readable string (`6:30 PM`) and a strict ISO 8601 time field (`18:30:00`).
+   - Persisted in `dbo.Call.callback_time_iso` (`VARCHAR(10)`) and presented in database reports.
+5. **Real Phone Calls via Twilio / Exotel Telephony**:
+   - Integrated outbound dialing endpoint `POST /api/telephony/outbound` connecting to real phone numbers.
+   - Hosted TwiML webhooks (`/api/telephony/twilio/voice` & `/api/telephony/twilio/turn`) utilizing `<Gather input="speech">` and native voice synthesis with full compliance gate enforcement.
+
+---
+
 ## 🧪 Automated Testing & Benchmarks
 
-The project includes automated regression tests covering all functional requirements, guardrails, and latency SLAs.
+The project includes **29 automated regression tests** covering all functional requirements, 6 compliance guardrails, sub-3-second latency SLAs, and all 5 bonus features.
 
-### 1. Run Complete Automated Pytest Suite (24 Tests)
+### 1. Run Complete Automated Pytest Suite (29 Tests)
+```bash
+pytest scripts/ -v
+```
+**Expected Output:**
+```text
+======================== 29 passed, 1 warning in 29.09s ========================
+```
+
+### 2. Run Bonus Features Suite Individually (5 Tests)
+```bash
+pytest scripts/test_bonus_features.py -v
+```
+**Expected Output:**
+```text
+scripts/test_bonus_features.py::test_bonus_1_sarvam_fallback_and_marathi_flow PASSED
+scripts/test_bonus_features.py::test_bonus_2_mid_call_language_switching PASSED
+scripts/test_bonus_features.py::test_bonus_3_audio_recording_saved_and_streamed PASSED
+scripts/test_bonus_features.py::test_bonus_4_callback_time_strict_iso_field PASSED
+scripts/test_bonus_features.py::test_bonus_5_twilio_telephony_endpoints PASSED
+========================= 5 passed in 5.04s =========================
+```
+
+### 3. Run Guardrails & E2E Suite (24 Tests)
 ```bash
 pytest scripts/test_guardrails_e2e.py -v
 ```
 **Expected Output:**
 ```text
-======================== 24 passed in 15.07s ========================
+======================== 24 passed in 15.02s ========================
 ```
 
-### 2. Execute 10 Canonical Persona Calls Against Database
+### 4. Execute 10 Canonical Persona Calls Against Database
 ```bash
 python scripts/verify_10_actual_voicebot_calls.py
 ```
 Executes all 10 benchmark calls (5 personas × 2 runs) and verifies mathematical congruence against `dbo.Call`.
 
-### 3. Seed Benchmark Calls & Verify Report KPIs
+### 5. Seed Benchmark Calls & Verify Report KPIs
 ```bash
 python scripts/seed_and_run_tests.py
 ```
@@ -333,12 +378,18 @@ Outcomes: Right customer=2, Verification failed=2, Wrong number=2, Callback requ
 | `/api/customers/reset` | `POST` | *None* | Resets the Customer table to the 10 assignment records. |
 | `/api/calls/preflight` | `POST` | `{"customer_id": "C001", "simulated_time": "11:00"}` | Checks 8 AM–7 PM window & DNC status. Returns HTTP 403 if blocked. |
 | `/api/calls/initiate` | `POST` | `{"customer_id": "C001", "language": "Hindi"}` | Creates call record immediately; increments attempted counter. |
-| `/api/calls/turn` | `POST` | `{"call_id": "...", "user_text": "...", "stage": "..."}` | Processes conversational turn, executes guardrails, updates state. |
-| `/api/calls/finalize` | `POST` | `{"call_id": "...", "outcome": "...", "duration": 20}` | Finalizes duration, outcome, and generates 3-line summary. |
-| `/api/report` | `GET` | *None* | Calculates summary KPIs and returns all persisted calls. |
-| `/api/seed_test_calls`| `POST` | *None* | Seeds the 10 benchmark calls matching `test_calls.csv`. |
-| `/api/tts` | `GET` | Query params: `text`, `lang` | Streams neural audio MP3 via Microsoft Edge-TTS. |
-| `/api/stt` | `POST` | Multipart audio file (`audio/webm` or `wav`) | Server-side Whisper speech-to-text fallback. |
+| `/api/calls/turn` | `POST` | `{"call_id": "...", "input_text": "...", "stage": "..."}` | Processes conversational turn, executes guardrails, updates state. |
+| `/api/calls/finalize` | `POST` | `{"call_id": "...", "outcome": "...", "duration_seconds": 20}` | Finalizes duration, outcome, audio recording, and generates 3-line summary. |
+| `/api/calls/save` | `POST` | Full call record JSON | Upserts durable call record into `dbo.Call`. |
+| `/api/calls/{call_id}/audio` | `GET` | *None* | Streams the full saved MP3 call audio recording. |
+| `/api/telephony/outbound` | `POST` | `{"customer_id": "C001", "phone_number": "+91..."}` | Places a real outbound phone call via Twilio trial API (Bonus #5). |
+| `/api/telephony/twilio/voice` | `GET/POST` | Twilio Webhook params | Returns initial TwiML `<Gather>` with mandatory Shaha Finlease disclosure. |
+| `/api/telephony/twilio/turn` | `GET/POST` | Twilio SpeechResult form | Processes real borrower speech from Twilio and returns TwiML next turn. |
+| `/api/reports/stats` | `GET` | *None* | Calculates summary KPIs and returns all persisted calls with transcripts. |
+| `/api/reports/seed_test_calls`| `POST` | *None* | Seeds the 10 benchmark calls matching `test_calls.csv`. |
+| `/api/reports/clear_calls` | `POST` | *None* | Purges call history for clean reproducible testing. |
+| `/api/tts` | `GET` | Query params: `text`, `lang` | Streams neural audio MP3 via Sarvam Bulbul / Microsoft Edge-TTS. |
+| `/api/stt` | `POST` | Multipart audio file (`audio/webm` or `wav`) | Transcribes audio via Sarvam Saaras / Groq Whisper. |
 
 ---
 
@@ -366,7 +417,9 @@ CREATE TABLE Call (
     connected BOOLEAN NOT NULL,          -- True if borrower spoke within 15s
     outcome VARCHAR(30) NOT NULL,        -- 1 of 6 canonical outcomes
     language VARCHAR(20) NOT NULL,
-    callback_time VARCHAR(50),           -- e.g. '6:30 PM' or NULL
+    callback_time VARCHAR(50),           -- Human-readable e.g. '6:30 PM'
+    callback_time_iso VARCHAR(10),       -- Strict ISO e.g. '18:30:00' (Bonus #4)
+    audio_path VARCHAR(255),             -- Disk path to saved MP3 (Bonus #3)
     transcript TEXT NOT NULL,            -- Turn-by-turn JSON array
     summary_3line TEXT NOT NULL          -- Standardized 3-line summary JSON
 );
