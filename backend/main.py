@@ -14,13 +14,17 @@ from pydantic import BaseModel
 from backend.compliance_gate import check_pre_call_gate
 from backend.db import (
     clear_calls,
+    create_initial_call_record,
+    finalize_call_record,
     get_all_customers,
     get_customer,
+    get_next_call_id,
     get_report_stats,
     init_db_and_seed_customers,
     reset_customers,
     save_call_record,
     seed_test_calls,
+    update_call_turn,
     update_customer_dnc,
 )
 from backend.voice_pipeline import (
@@ -31,8 +35,12 @@ from backend.voice_pipeline import (
 )
 
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+load_dotenv(os.path.join(BASE_DIR, "..", ".env"))
+
 CSV_PATH = os.path.join(BASE_DIR, "data", "customers.csv")
 TEST_CALLS_CSV_PATH = os.path.join(BASE_DIR, "data", "test_calls.csv")
 FRONTEND_PATH = os.path.join(BASE_DIR, "frontend", "index.html")
@@ -41,6 +49,10 @@ FRONTEND_PATH = os.path.join(BASE_DIR, "frontend", "index.html")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db_and_seed_customers(CSV_PATH)
+    # Ensure 10 benchmark calls from test_calls.csv are seeded if table is below 10
+    rep = get_report_stats()
+    if rep.get("calls_attempted", 0) < 10:
+        seed_test_calls(TEST_CALLS_CSV_PATH, CSV_PATH)
     yield
 
 
@@ -69,11 +81,25 @@ class PreflightRequest(BaseModel):
     simulated_hour: Optional[int] = None
 
 
+class InitiateCallRequest(BaseModel):
+    customer_id: str
+    simulated_hour: Optional[int] = None
+    start_time: Optional[str] = None
+
+
 class TurnRequest(BaseModel):
     customer_id: str
     input_text: str
     stage: str = "AWAITING_NAME_CONFIRMATION"
     language: str = "Hindi"
+    call_id: Optional[str] = None
+
+
+class FinalizeCallRequest(BaseModel):
+    call_id: str
+    duration_seconds: int = 0
+    outcome: Optional[str] = None
+    summary_3line: Optional[List[str]] = None
 
 
 class SaveCallRequest(BaseModel):
@@ -108,13 +134,35 @@ def health_check() -> Dict[str, Any]:
 
 @app.get("/api/customers")
 def list_customers() -> List[Dict[str, Any]]:
-    return get_all_customers()
+    # Protect verification data: strip birth_year from public list API
+    return [
+        {
+            "customer_id": c["customer_id"],
+            "name": c["name"],
+            "phone": c["phone"],
+            "language": c["language"],
+            "do_not_call": c["do_not_call"],
+        }
+        for c in get_all_customers()
+    ]
 
 
 @app.post("/api/customers/reset")
 def reset_all_customers() -> Dict[str, Any]:
     reset_customers(CSV_PATH)
-    return {"status": "reset", "customers": get_all_customers()}
+    return {
+        "status": "reset",
+        "customers": [
+            {
+                "customer_id": c["customer_id"],
+                "name": c["name"],
+                "phone": c["phone"],
+                "language": c["language"],
+                "do_not_call": c["do_not_call"],
+            }
+            for c in get_all_customers()
+        ],
+    }
 
 
 @app.post("/api/calls/preflight")
@@ -129,7 +177,58 @@ def preflight_call_window_check(req: PreflightRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=403, detail=reason)
 
     opening = generate_opening_disclosure(customer["name"], customer.get("language", "Hindi"))
-    return {"allowed": True, "reason": reason, "opening_disclosure": opening, "customer": customer}
+    # Protect verification data: do not expose birth_year
+    safe_customer = {
+        "customer_id": customer["customer_id"],
+        "name": customer["name"],
+        "phone": customer["phone"],
+        "language": customer["language"],
+        "do_not_call": customer["do_not_call"],
+    }
+    return {"allowed": True, "reason": reason, "opening_disclosure": opening, "customer": safe_customer}
+
+
+@app.post("/api/calls/initiate")
+def initiate_call(req: InitiateCallRequest) -> Dict[str, Any]:
+    """Feature #4 Backend-Owned Call Lifecycle:
+
+    Checks gatekeeper and creates Call record in dbo.Call as 'Not connected' before conversation begins.
+    Guarantees call is tracked in DB even if connection drops before response or browser crashes.
+    """
+    customer = get_customer(req.customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail=f"Customer {req.customer_id} not found")
+
+    allowed, reason = check_pre_call_gate(bool(customer["do_not_call"]), req.simulated_hour)
+    if not allowed:
+        raise HTTPException(status_code=403, detail=reason)
+
+    call_id = get_next_call_id()
+    lang = customer.get("language", "Hindi")
+    opening = generate_opening_disclosure(customer["name"], lang)
+
+    # Persist in DB immediately
+    create_initial_call_record(
+        call_id=call_id,
+        customer_id=req.customer_id,
+        language=lang,
+        opening_text=opening,
+        start_time=req.start_time,
+    )
+
+    safe_customer = {
+        "customer_id": customer["customer_id"],
+        "name": customer["name"],
+        "phone": customer["phone"],
+        "language": customer["language"],
+        "do_not_call": customer["do_not_call"],
+    }
+    return {
+        "allowed": True,
+        "call_id": call_id,
+        "opening_disclosure": opening,
+        "customer": safe_customer,
+    }
 
 
 @app.post("/api/calls/turn")
@@ -142,7 +241,32 @@ def execute_borrower_turn(req: TurnRequest) -> Dict[str, Any]:
     if result.get("mark_do_not_call"):
         update_customer_dnc(req.customer_id, 1)
 
+    # If call_id provided, update dbo.Call turn-by-turn
+    if req.call_id:
+        update_call_turn(
+            call_id=req.call_id,
+            borrower_text=req.input_text,
+            bot_reply=result.get("bot_reply", ""),
+            language=result.get("detected_language", req.language),
+            outcome=result.get("outcome"),
+            callback_time=result.get("callback_time"),
+            mark_do_not_call=bool(result.get("mark_do_not_call", False)),
+            customer_id=req.customer_id,
+        )
+
     return result
+
+
+@app.post("/api/calls/finalize")
+def finalize_call(req: FinalizeCallRequest) -> Dict[str, Any]:
+    """Finalizes call outcome, duration, and 3-line summary in dbo.Call."""
+    finalize_call_record(
+        call_id=req.call_id,
+        duration_seconds=req.duration_seconds,
+        outcome=req.outcome or "Not connected",
+        summary_3line=req.summary_3line,
+    )
+    return {"status": "finalized", "call_id": req.call_id}
 
 
 @app.post("/api/calls/save")

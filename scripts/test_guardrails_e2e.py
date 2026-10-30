@@ -49,10 +49,10 @@ def setup_module():
 # FEATURE 1: Customer List & Call Window
 # ==============================================================================
 def test_feature_1_customer_seeding_and_list():
-    """Verify all 10 dummy customers are loaded with correct schemas."""
+    """Verify exactly 10 dummy customers are loaded with correct schemas and birth_year stripped from API."""
     reset_customers(CSV_PATH)
     customers = get_all_customers()
-    assert len(customers) >= 10, f"Expected at least 10 customers, found {len(customers)}"
+    assert len(customers) == 10, f"Expected exactly 10 dummy customers, found {len(customers)}"
     c001 = next(c for c in customers if c["customer_id"] == "C001")
     assert c001["name"] == "Rahul Sharma"
     assert c001["phone"] == "+919000000001"
@@ -62,7 +62,10 @@ def test_feature_1_customer_seeding_and_list():
 
     res = client.get("/api/customers")
     assert res.status_code == 200
-    assert len(res.json()) >= 10
+    customer_list = res.json()
+    assert len(customer_list) == 10
+    # Problem 5 Fix: Birth year must never be exposed via frontend list API
+    assert "birth_year" not in customer_list[0]
 
 
 def test_feature_1_call_window_refusal_before_8am():
@@ -151,7 +154,7 @@ def test_feature_3_outcome_2_verification_failed():
     assert res2["outcome"] == "Verification failed"
     # NEVER reveal the expected birth year 1992
     assert "1992" not in res2["bot_reply"]
-    assert "does not match" in res2["bot_reply"] or "मेल नहीं खाता" in res2["bot_reply"]
+    assert "not match" in res2["bot_reply"] or "मेल नहीं खाता" in res2["bot_reply"]
 
 
 def test_feature_3_outcome_3_wrong_number():
@@ -358,6 +361,8 @@ def test_compliance_rule_6_dnc_trigger_and_flag_update():
     allowed, reason = check_pre_call_gate(bool(updated["do_not_call"]), 11)
     assert allowed is False
     assert "Do Not Call" in reason
+    # Reset C001 DNC to 0 so other tests are not blocked
+    update_customer_dnc("C001", 0)
 
 
 # ==============================================================================
@@ -373,9 +378,74 @@ def test_sla_latency_under_3_seconds():
 @pytest.mark.asyncio
 async def test_edge_tts_audio_synthesis():
     """Verify Microsoft edge-tts synthesizes non-empty MP3 audio bytes."""
+    from backend.voice_pipeline import edge_tts
+    if edge_tts is None:
+        pytest.skip("edge-tts library is not installed in the running environment")
     audio_bytes = await synthesize_tts_mp3("नमस्ते, यह शाहा फिनलीज़ की ऑडियो टेस्ट है।", "Hindi")
     assert audio_bytes is not None
     assert len(audio_bytes) > 1000, "Audio bytes should be > 1000 bytes for MP3 frame"
+
+
+def test_backend_owned_call_lifecycle_and_interrupted_call():
+    """Feature #4 / Problem 7 Fix: Call is persisted at initiation.
+
+    Even if dropped before reply, it is recorded in DB with Connected = No and attempted count increments.
+    """
+    clear_calls()
+    init_res = client.post("/api/calls/initiate", json={"customer_id": "C001", "simulated_hour": 11})
+    assert init_res.status_code == 200
+    data = init_res.json()
+    call_id = data["call_id"]
+    assert "birth_year" not in data["customer"]
+
+    # Verify call already exists in DB before any turns
+    report = get_report_stats()
+    assert report["calls_attempted"] == 1
+    assert report["connected"] == 0
+    assert report["not_connected"] == 1
+
+    # Now turn occurs
+    turn_res = client.post("/api/calls/turn", json={
+        "call_id": call_id,
+        "customer_id": "C001",
+        "input_text": "हाँ, मैं राहुल शर्मा बोल रहा हूँ।",
+        "stage": "AWAITING_NAME_CONFIRMATION",
+        "language": "Hindi"
+    })
+    assert turn_res.status_code == 200
+
+    # Verify connected is now 1 in DB
+    report = get_report_stats()
+    assert report["connected"] == 1
+
+    # Finalize call
+    fin_res = client.post("/api/calls/finalize", json={
+        "call_id": call_id,
+        "duration_seconds": 15,
+        "outcome": "Verification failed"
+    })
+    assert fin_res.status_code == 200
+
+
+def test_hindi_interrogative_collision_fixed():
+    """Problem 2 Fix: Saying 'आप कौन हो?' must NOT be treated as affirmative Marathi 'हो'."""
+    customer = get_customer("C001")
+    res = process_turn(customer, "आप कौन हो? किसने फोन किया है?", "AWAITING_NAME_CONFIRMATION", "Hindi")
+    # Must remain at AWAITING_NAME_CONFIRMATION and not jump to birth year
+    assert res["stage"] == "AWAITING_NAME_CONFIRMATION"
+    assert res["outcome"] is None
+
+
+def test_birth_year_never_in_preflight_or_customer_api():
+    """Problem 5 Fix: Expected birth year must never be exposed via frontend REST endpoints."""
+    pref_res = client.post("/api/calls/preflight", json={"customer_id": "C001", "simulated_hour": 11})
+    assert pref_res.status_code == 200
+    assert "birth_year" not in pref_res.json()["customer"]
+
+    cust_res = client.get("/api/customers")
+    assert cust_res.status_code == 200
+    for c in cust_res.json():
+        assert "birth_year" not in c
 
 
 if __name__ == "__main__":

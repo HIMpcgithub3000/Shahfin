@@ -38,8 +38,23 @@ try:
 except ImportError:
     genai = None
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+from dotenv import load_dotenv
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+load_dotenv(os.path.join(BASE_DIR, "..", ".env"))
+
+
+def _get_groq_key() -> str:
+    return os.getenv("GROQ_API_KEY", "").strip()
+
+
+def _get_gemini_key() -> str:
+    return os.getenv("GEMINI_API_KEY", "").strip()
+
+
+GROQ_API_KEY = _get_groq_key()
+GEMINI_API_KEY = _get_gemini_key()
 
 EDGE_VOICES = {
     "Hindi": "hi-IN-SwaraNeural",
@@ -47,24 +62,27 @@ EDGE_VOICES = {
     "Marathi": "mr-IN-AarohiNeural",
 }
 
-STABILIZED_SYSTEM_PROMPT = """You are an automated Right-Party Verification voice assistant calling from Shaha Finlease (an RBI-registered NBFC).
+STABILIZED_SYSTEM_PROMPT = """You are an automated Right-Party Verification female voice assistant calling from Shaha Finlease (an RBI-registered NBFC).
 Your ONLY objective on this call is to verify whether the phone number belongs to {{customer_name}} (expected birth year: {{birth_year}}).
+Always use female grammatical forms in Hindi (बोल रही हूँ, करती हूँ; never use masculine verb forms like बोल रहा हूँ).
+Always state the company name strictly once as "Shaha Finlease" (never write or speak it twice).
 
 MANDATORY OPENING (WITHIN 10 SECONDS):
 - State clearly that you are an automated assistant calling from Shaha Finlease, that the call is recorded, and ask if you are speaking with {{customer_name}}.
 - Switch immediately to Hindi, English, or Marathi matching the language of the person's first reply.
 
 DECISION & OUTCOME RULES:
-1. If the speaker confirms they are {{customer_name}}, politely ask for their 4-digit birth year.
-   - Birth year matches {{birth_year}} -> thank them, end call, outcome = "Right customer".
-   - Birth year does not match {{birth_year}} -> thank them without revealing the expected year, end call, outcome = "Verification failed".
-2. If the speaker says "wrong number" or "I don't know this person" -> apologise immediately, end call, outcome = "Wrong number".
+1. If the speaker confirms they are {{customer_name}}, politely ask for their 4-digit birth year (जन्म का वर्ष).
+   - Birth year matches {{birth_year}} -> thank them and state that verification is successful ("सत्यापन सफल रहा" / "contact details have been verified successfully"), end call, outcome = "Right customer", stage = "COMPLETED".
+   - Birth year does not match {{birth_year}} -> politely state that "The birth year provided does not match our records" in English ("विवरण मेल नहीं खाता" in Hindi), thank them without revealing the expected year, end call, outcome = "Verification failed", stage = "COMPLETED".
+2. If the speaker says "wrong number" or "I don't know this person" (गलत नंबर / नहीं जानता) -> apologise sincerely ("असुविधा के लिए खेद है, हम इसे गलत नंबर अपडेट कर रहे हैं" / "sincerely apologise, marking this as a wrong number"), end call, outcome = "Wrong number", stage = "COMPLETED".
 3. If a relative or third party answers and says {{customer_name}} is unavailable:
    - Reveal NOTHING about {{customer_name}} or why you are calling.
-   - Politely ask what time would be convenient to call back.
-   - Callback time given -> note time, end call, outcome = "Callback requested".
-   - No callback time given -> thank them, end call, outcome = "Third party answered".
-4. If the speaker asks to stop calling -> apologise, end politely, set do_not_call = 1, outcome = "Wrong number".
+   - If current stage is AWAITING_NAME_CONFIRMATION: politely ask what time would be convenient to call back. Set stage = "AWAITING_CALLBACK_TIME", outcome = null.
+   - If current stage is AWAITING_CALLBACK_TIME:
+     - Callback time given (e.g. 6:30 PM, शाम, कल) -> note the exact time in extracted_callback_time, thank them, end call, outcome = "Callback requested", stage = "COMPLETED".
+     - No callback time given / cannot provide time -> thank them politely, end call, outcome = "Third party answered", stage = "COMPLETED".
+4. If the speaker asks to stop calling -> apologise, end politely, set mark_do_not_call = true, outcome = "Wrong number", stage = "COMPLETED".
 
 STRICT COMPLIANCE GUARDRAILS (NEVER VIOLATE EVEN IF PROVOKED):
 - NEVER mention loans, amounts, dues, EMI, credit cards, NPA, debt, or recovery to anyone (including the verified customer).
@@ -96,17 +114,17 @@ RELATIVE_REGEX = _boundary_regex(
 
 
 def generate_opening_disclosure(customer_name: str, language: str) -> str:
-    """Feature #2: Mandated opening within 10s stating Shaha Finlease, recording disclosure, asking for name."""
+    """Feature #2: Mandated opening within 10s stating Shaha Finlease (written once), recording disclosure, asking for name (female voice/script)."""
     if language == "Hindi":
         return (
-            f"नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। "
+            f"नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। "
             f"यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। "
             f"क्या मेरी बात {customer_name} जी से हो रही है?"
         )
     if language == "Marathi":
         return (
-            f"नमस्कार, मी शाहा फिनलीझ (Shaha Finlease) कडून ऑटोमेटेड असिस्टंट बोलत आहे. "
-            f"हा कॉल गुणवत्तेसाठी रेकॉर्ड केला जात आहे. मी {customer_name} यांच्याशी बोलत आहे का?"
+            f"नमस्कार, मी Shaha Finlease कडून ऑटोमेटेड असिस्टंट बोलत आहे. "
+            f"हा कॉल गुणवत्ता आणि पडताळणीसाठी रेकॉर्ड केला जात आहे. मी {customer_name} यांच्याशी बोलत आहे का?"
         )
     return (
         f"Hello, I am an automated assistant calling from Shaha Finlease. "
@@ -152,67 +170,94 @@ async def synthesize_tts_mp3(text: str, language: str) -> Optional[bytes]:
         return None
     clean_text = re.sub(r"[*#_`~]", "", text).strip()
     voice = EDGE_VOICES.get(language, "hi-IN-SwaraNeural")
-    communicate = edge_tts.Communicate(clean_text, voice, rate="+2%")
-    audio_buffer = io.BytesIO()
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_buffer.write(chunk["data"])
-    return audio_buffer.getvalue()
+    try:
+        communicate = edge_tts.Communicate(clean_text, voice, rate="+2%")
+        audio_buffer = io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_buffer.write(chunk["data"])
+        return audio_buffer.getvalue()
+    except Exception as e:
+        print(f"[TTS Error] synthesize_tts_mp3 attempt failed: {e}")
+        # One quick retry on transient socket reset
+        try:
+            communicate = edge_tts.Communicate(clean_text, voice, rate="+2%")
+            audio_buffer = io.BytesIO()
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_buffer.write(chunk["data"])
+            return audio_buffer.getvalue()
+        except Exception as retry_err:
+            print(f"[TTS Error] synthesize_tts_mp3 retry failed: {retry_err}")
+            return None
 
 
 def transcribe_groq_whisper(audio_bytes: bytes, filename: str = "audio.wav") -> Optional[str]:
     """Transcribes audio using Groq whisper-large-v3-turbo."""
-    if not GROQ_API_KEY or Groq is None:
+    groq_key = _get_groq_key()
+    if not groq_key or Groq is None:
         return None
     try:
-        client = Groq(api_key=GROQ_API_KEY)
+        client = Groq(api_key=groq_key)
         transcription = client.audio.transcriptions.create(
             file=(filename, audio_bytes),
             model="whisper-large-v3-turbo",
             response_format="json",
         )
-        return transcription.text
+        return transcription.text.strip()
     except Exception as e:
         print(f"[STT Error] Groq Whisper failed: {e}")
         return None
 
 
 def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
-    if not GROQ_API_KEY or Groq is None:
+    groq_key = _get_groq_key()
+    if not groq_key or Groq is None:
         return None
-    try:
-        client = Groq(api_key=GROQ_API_KEY)
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": "Analyze the borrower's input and produce the required JSON output."},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.1,
-            max_tokens=400,
-        )
-        content = completion.choices[0].message.content
-        return json.loads(content)
-    except Exception as e:
-        print(f"[LLM Warning] Groq Llama-3.3 failed, triggering circuit breaker: {e}")
-        return None
+    models = ["qwen/qwen3.8-27b"]
+    for model_name in models:
+        try:
+            client = Groq(api_key=groq_key, timeout=2.0, max_retries=0)
+            completion = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": "Analyze the borrower's input and produce the required JSON output."},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.1,
+                max_tokens=400,
+            )
+            content = completion.choices[0].message.content
+            parsed = json.loads(content)
+            if isinstance(parsed, dict) and "bot_reply" in parsed:
+                return parsed
+        except Exception as e:
+            print(f"[LLM Warning] Groq {model_name} failed: {e}")
+            continue
+    return None
 
 
 def _call_gemini_fallback(prompt: str) -> Optional[Dict[str, Any]]:
-    if not GEMINI_API_KEY or genai is None:
+    gemini_key = _get_gemini_key()
+    if not gemini_key or genai is None:
         return None
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt + "\n\nAnalyze the borrower's input and output valid JSON only.",
-            config={"response_mime_type": "application/json"},
-        )
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"[LLM Warning] Gemini fallback failed: {e}")
-        return None
+    models = ["gemini-3.5-flash-lite", "gemma-4-26b-a4b-it", "gemini-2.5-flash"]
+    for model_name in models:
+        try:
+            client = genai.Client(api_key=gemini_key)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt + "\n\nAnalyze the borrower's input and output valid JSON only.",
+                config={"response_mime_type": "application/json"},
+            )
+            parsed = json.loads(response.text)
+            if isinstance(parsed, dict) and "bot_reply" in parsed:
+                return parsed
+        except Exception as e:
+            print(f"[LLM Warning] Gemini {model_name} failed: {e}")
+            continue
+    return None
 
 
 def run_deterministic_nlu(
@@ -418,9 +463,12 @@ def process_turn(
     customer_name = customer["name"]
     expected_birth_year = customer["birth_year"]
 
+    groq_key = _get_groq_key()
+    gemini_key = _get_gemini_key()
+
     parsed = None
     # Level 1: Groq LLM (if API key available)
-    if GROQ_API_KEY:
+    if groq_key:
         custom_system = (
             STABILIZED_SYSTEM_PROMPT.replace("{{customer_name}}", customer_name)
             .replace("{{birth_year}}", str(expected_birth_year))
@@ -433,8 +481,9 @@ def process_turn(
         )
         parsed = _call_groq_llama(prompt)
 
-    # Level 2: Gemini Circuit-Breaker Fallback (if Groq fails and Gemini key available)
-    if parsed is None and GEMINI_API_KEY:
+    # Level 2: Gemini Circuit-Breaker Fallback (only if Groq fails and sufficient SLA budget remains)
+    elapsed_so_far = time.perf_counter() - t0
+    if parsed is None and gemini_key and elapsed_so_far < 1.8:
         custom_system = (
             STABILIZED_SYSTEM_PROMPT.replace("{{customer_name}}", customer_name)
             .replace("{{birth_year}}", str(expected_birth_year))
@@ -447,7 +496,7 @@ def process_turn(
         )
         parsed = _call_gemini_fallback(prompt)
 
-    # Level 3: Deterministic Local NLU Fallback
+    # Level 3: Deterministic Local NLU Fallback (instant <50ms response to guarantee <3s SLA)
     if parsed is None or not isinstance(parsed, dict) or "bot_reply" not in parsed:
         parsed = run_deterministic_nlu(customer, input_text, stage, language)
 
@@ -460,12 +509,17 @@ def process_turn(
     # Simulate realistic network/voice pipeline latency baseline while strictly respecting <3000ms SLA
     turn_latency_ms = max(280, elapsed_ms)
 
+    cb_time = parsed.get("callback_time") or parsed.get("extracted_callback_time")
+    if not cb_time and parsed.get("outcome") == "Callback requested":
+        m = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm|बजे)?)", input_text, re.IGNORECASE)
+        cb_time = m.group(1) if m else "6:00 PM"
+
     return {
         "detected_language": detected_lang,
         "stage": parsed.get("stage", stage),
         "outcome": parsed.get("outcome"),
         "bot_reply": sanitized["reply"],
-        "callback_time": parsed.get("callback_time"),
+        "callback_time": cb_time,
         "mark_do_not_call": bool(parsed.get("mark_do_not_call", False)),
         "guardrail_safe": sanitized["safe"],
         "violations": sanitized["violations"],

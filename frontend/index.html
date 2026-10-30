@@ -495,7 +495,7 @@
                   <button type="button" id="btnCorrectBirthYear" class="px-2.5 py-1 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-[11px] font-medium transition">
                     🎂 Give Correct Birth Year (1985)
                   </button>
-                  <button type="button" data-quick-reply="My birth year is 1999." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#D4A056]/18 hover:bg-[#D4A056]/30 text-[#6B4423] border border-[#D4A056]/40 text-[11px] font-medium transition">
+                  <button type="button" id="btnWrongBirthYear" data-quick-reply="My birth year is 1999." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#D4A056]/18 hover:bg-[#D4A056]/30 text-[#6B4423] border border-[#D4A056]/40 text-[11px] font-medium transition">
                     ❌ Wrong Birth Year (1999)
                   </button>
                   <button type="button" data-quick-reply="रॉन्ग नंबर है, मैं इस नाम के किसी व्यक्ति को नहीं जानता।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#C0392B]/12 hover:bg-[#C0392B]/22 text-[#C0392B] border border-[#C0392B]/30 text-[11px] font-medium transition">
@@ -782,22 +782,16 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       { customer_id: 'C007', name: 'Rohan Mehta',     phone: '+919000000007', birth_year: 1983, language: 'English', do_not_call: 0 },
       { customer_id: 'C008', name: 'Kavita Joshi',    phone: '+919000000008', birth_year: 1976, language: 'Hindi',   do_not_call: 0 },
       { customer_id: 'C009', name: 'Suresh Yadav',    phone: '+919000000009', birth_year: 1987, language: 'Hindi',   do_not_call: 0 },
-      { customer_id: 'C010', name: 'Neha Gupta',      phone: '+919000000010', birth_year: 1994, language: 'English', do_not_call: 0 },
-      { customer_id: 'C011', name: 'Himanshu Sharma', phone: '+916267386284', birth_year: 1995, language: 'Hindi',   do_not_call: 0 }
+      { customer_id: 'C010', name: 'Neha Gupta',      phone: '+919000000010', birth_year: 1994, language: 'English', do_not_call: 0 }
     ];
 
+    // Local benchmark fixture years strictly for demo buttons, never exposed via backend API
+    const DEMO_FIXTURE_YEARS = {
+      C001: 1985, C002: 1992, C003: 1988, C004: 1990, C005: 1979,
+      C006: 1995, C007: 1983, C008: 1976, C009: 1987, C010: 1994
+    };
+
     const TEST_SCENARIOS = {
-      C011: {
-        call_no: 11,
-        tester_plays: 'Right customer: confirms name and gives correct birth year',
-        tester_language: 'Hindi',
-        expected_outcome: 'Right customer',
-        expected_connected: true,
-        steps: [
-          'हाँ, मैं हिमांशु शर्मा बोल रहा हूँ।',
-          'मेरा जन्म का साल 1995 है।'
-        ]
-      },
       C001: {
         call_no: 1,
         tester_plays: 'Right customer: confirms name and gives correct birth year',
@@ -916,7 +910,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         callback_time: null,
         avg_latency_ms: 410,
         transcript: [
-          { speaker: 'Bot', lang: 'Hindi', latency_ms: 320, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात राहुल शर्मा जी से हो रही है?' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 320, text: 'नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात राहुल शर्मा जी से हो रही है?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'हाँ, मैं राहुल शर्मा बोल रहा हूँ।' },
           { speaker: 'Bot', lang: 'Hindi', latency_ms: 440, text: 'धन्यवाद राहुल शर्मा जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'मेरा जन्म का साल 1985 है।' },
@@ -966,7 +960,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         callback_time: null,
         avg_latency_ms: 365,
         transcript: [
-          { speaker: 'Bot', lang: 'Hindi', latency_ms: 305, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात अमित पाटिल जी से हो रही है?' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 305, text: 'नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात अमित पाटिल जी से हो रही है?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'रॉन्ग नंबर है, मैं अमित पाटिल नाम के किसी व्यक्ति को नहीं जानता।' },
           { speaker: 'Bot', lang: 'Hindi', latency_ms: 425, text: 'असुविधा के लिए हमें खेद है। हम इस नंबर को तुरंत गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।' }
         ],
@@ -989,7 +983,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         callback_time: '6:30 PM',
         avg_latency_ms: 430,
         transcript: [
-          { speaker: 'Bot', lang: 'Hindi', latency_ms: 330, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात स्नेहा कुलकर्णी जी से हो रही है?' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 330, text: 'नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात स्नेहा कुलकर्णी जी से हो रही है?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'स्नेहा अभी घर से बाहर गई हैं, मैं उनका भाई बोल रहा हूँ।' },
           { speaker: 'Bot', lang: 'Hindi', latency_ms: 460, text: 'जानकारी के लिए धन्यवाद। कृपया बताएं कि स्नेहा कुलकर्णी जी से बात करने के लिए हम किस समय दोबारा कॉल कर सकते हैं?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'आप आज शाम 6:30 बजे कॉल कर लीजिए।' },
@@ -1036,7 +1030,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         callback_time: null,
         avg_latency_ms: 405,
         transcript: [
-          { speaker: 'Bot', lang: 'Hindi', latency_ms: 315, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात अंजलि देशमुख जी से हो रही है?' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 315, text: 'नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात अंजलि देशमुख जी से हो रही है?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'जी हाँ, मैं अंजलि देशमुख बोल रही हूँ।' },
           { speaker: 'Bot', lang: 'Hindi', latency_ms: 430, text: 'धन्यवाद अंजलि देशमुख जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'मेरा बर्थ ईयर 1995 है।' },
@@ -1086,7 +1080,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         callback_time: null,
         avg_latency_ms: 375,
         transcript: [
-          { speaker: 'Bot', lang: 'Hindi', latency_ms: 320, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात कविता जोशी जी से हो रही है?' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 320, text: 'नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात कविता जोशी जी से हो रही है?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'यह उनका नंबर नहीं है, आपने गलत नंबर लगाया है।' },
           { speaker: 'Bot', lang: 'Hindi', latency_ms: 430, text: 'असुविधा के लिए हमें खेद है। हम इस नंबर को तुरंत गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।' }
         ],
@@ -1109,7 +1103,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         callback_time: null,
         avg_latency_ms: 420,
         transcript: [
-          { speaker: 'Bot', lang: 'Hindi', latency_ms: 315, text: 'नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात सुरेश यादव जी से हो रही है?' },
+          { speaker: 'Bot', lang: 'Hindi', latency_ms: 315, text: 'नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात सुरेश यादव जी से हो रही है?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'सुरेश जी अभी घर पर नहीं हैं, बाहर गए हुए हैं।' },
           { speaker: 'Bot', lang: 'Hindi', latency_ms: 445, text: 'जानकारी के लिए धन्यवाद। कृपया बताएं कि सुरेश यादव जी से बात करने के लिए हम किस समय दोबारा कॉल कर सकते हैं?' },
           { speaker: 'Borrower', lang: 'Hindi', text: 'मुझे नहीं पता वो कब तक लौटेंगे, कोई फिक्स समय नहीं बता सकता।' },
@@ -1150,7 +1144,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     // =========================================================================
     let customers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
     let calls = JSON.parse(JSON.stringify(PRELOADED_CALLS));
-    let selectedCustomerId = 'C011';
+    let selectedCustomerId = 'C001';
     let selectedCallDetailId = 'CALL-1001';
     let blockedOutOfWindowCount = 0;
     let outcomeFilter = 'ALL';
@@ -1252,7 +1246,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const manual = document.getElementById('manualLangSelect').value;
       if (manual !== 'Auto') return manual;
 
-      if (/\b(मी|आहे|माझे|तुम्ही|नाही|बोला|हो)\b/.test(text)) {
+      // Exclusive Marathi tokens (do not include ambiguous 'हो' which is Hindi copula)
+      if (/\b(मी|आहे|माझे|तुम्ही|नाही|बोला|मीच|होय|बोलतोय|बोलतेय)\b/.test(text)) {
         return 'Marathi';
       }
       if (/[\u0900-\u097F]/.test(text) || /\b(haan|nahi|main|mera|galat|ghar|shaam|baje|kaun|kya|mat|karo)\b/i.test(text)) {
@@ -1265,6 +1260,68 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     }
 
     let currentTtsAudio = null;
+    let fullCallAudioPlayer = null;
+    let activeMicStream = null;
+    let currentWebSpeechRec = null;
+    let mediaRecorderInstance = null;
+    let audioChunksRecorded = [];
+    let isRecordingMedia = false;
+    let isBotSpeaking = false;
+
+    function stopAllAudio() {
+      if (currentTtsAudio) {
+        try {
+          currentTtsAudio.pause();
+          currentTtsAudio.currentTime = 0;
+        } catch (e) {}
+        currentTtsAudio = null;
+      }
+      if (fullCallAudioPlayer) {
+        try {
+          fullCallAudioPlayer.pause();
+          fullCallAudioPlayer.currentTime = 0;
+        } catch (e) {}
+        fullCallAudioPlayer = null;
+        const ind = document.getElementById('fullAudioPlayingIndicator');
+        if (ind) ind.classList.add('hidden');
+        const stopBtn = document.getElementById('stopFullAudioBtn');
+        if (stopBtn) stopBtn.classList.add('hidden');
+      }
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch (e) {}
+      }
+      isBotSpeaking = false;
+      const container = document.getElementById('waveformBars');
+      if (container) {
+        const bars = container.querySelectorAll('.wave-bar');
+        bars.forEach(b => b.classList.remove('wave-active'));
+      }
+    }
+
+    function stopAllRecording() {
+      if (isRecordingMedia && mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') {
+        try {
+          mediaRecorderInstance.stop();
+        } catch (e) {}
+        isRecordingMedia = false;
+      }
+      if (activeMicStream) {
+        try {
+          activeMicStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+        activeMicStream = null;
+      }
+      if (currentWebSpeechRec) {
+        try {
+          currentWebSpeechRec.abort();
+        } catch (e) {}
+        currentWebSpeechRec = null;
+      }
+      const micLbl = document.getElementById('micLabel');
+      if (micLbl) micLbl.textContent = 'Speak';
+    }
 
     function playBrowserSpeechFallback(text, lang) {
       if (!ttsEnabled || !('speechSynthesis' in window)) return;
@@ -1272,29 +1329,78 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(text);
         utter.lang = lang === 'Hindi' ? 'hi-IN' : lang === 'Marathi' ? 'mr-IN' : 'en-IN';
-        utter.rate = 1.02;
+        utter.rate = 1.0;
+        isBotSpeaking = true;
+        utter.onend = () => {
+          isBotSpeaking = false;
+          if (activeCall && !activeCall.ended) {
+            resetSilenceCountdown();
+          }
+        };
+        utter.onerror = () => {
+          isBotSpeaking = false;
+        };
         window.speechSynthesis.speak(utter);
-      } catch (e) {}
+      } catch (e) {
+        isBotSpeaking = false;
+      }
     }
 
-    function speakBotText(text, lang) {
-      pulseWaveform(2400);
-      if (!ttsEnabled) return;
-      if (currentTtsAudio) {
-        try { currentTtsAudio.pause(); } catch (e) {}
-        currentTtsAudio = null;
-      }
+    let turnStartTimestamp = null;
+
+    function speakBotText(text, lang = 'Hindi') {
+      if (!ttsEnabled || !text) return;
+
+      // Guarantee ONLY ONE AUDIO plays at any given time
+      stopAllAudio();
+      isBotSpeaking = true;
+      pulseWaveform(Math.max(2200, text.length * 85));
+
       try {
         const audioUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(lang)}`;
         const audio = new Audio(audioUrl);
         currentTtsAudio = audio;
+
+        audio.onplay = () => {
+          isBotSpeaking = true;
+          if (turnStartTimestamp) {
+            const totalE2EMs = Math.round(performance.now() - turnStartTimestamp);
+            updateE2ELatencyBadge(totalE2EMs);
+            turnStartTimestamp = null;
+          }
+        };
+
+        audio.onended = () => {
+          isBotSpeaking = false;
+          currentTtsAudio = null;
+          // Silence countdown begins ONLY after the bot finishes speaking
+          if (activeCall && !activeCall.ended) {
+            resetSilenceCountdown();
+          }
+        };
+
+        audio.onerror = (err) => {
+          console.warn('Edge TTS audio error, falling back to speech synthesis:', err);
+          isBotSpeaking = false;
+          if (currentTtsAudio === audio) {
+            currentTtsAudio = null;
+            playBrowserSpeechFallback(text, lang);
+          }
+        };
+
         const playPromise = audio.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            playBrowserSpeechFallback(text, lang);
+          playPromise.catch((err) => {
+            console.warn('Audio play interrupted or prevented:', err);
+            isBotSpeaking = false;
+            if (currentTtsAudio === audio) {
+              currentTtsAudio = null;
+              playBrowserSpeechFallback(text, lang);
+            }
           });
         }
       } catch (err) {
+        isBotSpeaking = false;
         playBrowserSpeechFallback(text, lang);
       }
     }
@@ -1309,8 +1415,6 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const text = decodeURIComponent(encodedText);
       speakBotText(text, lang || 'Hindi');
     };
-
-    let fullCallAudioPlayer = null;
 
     window.playFullCallAudio = function(url, title) {
       if (fullCallAudioPlayer) {
@@ -1365,10 +1469,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     function generateOpeningGreeting(customer) {
       const lang = customer.language || 'Hindi';
       if (lang === 'Hindi') {
-        return `नमस्ते, मैं शाहा फिनलीज़ (Shaha Finlease) से एक ऑटोमेटेड असिस्टेंट बोल रहा हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात ${customer.name} जी से हो रही है?`;
+        return `नमस्ते, मैं Shaha Finlease से एक ऑटोमेटेड असिस्टेंट बोल रही हूँ। यह कॉल गुणवत्ता और सत्यापन के लिए रिकॉर्ड की जा रही है। क्या मेरी बात ${customer.name} जी से हो रही है?`;
       }
       if (lang === 'Marathi') {
-        return `नमस्कार, मी शाहा फिनलीझ (Shaha Finlease) कडून ऑटोमेटेड असिस्टंट बोलत आहे. हा कॉल गुणवत्तेसाठी रेकॉर्ड केला जात आहे. मी ${customer.name} यांच्याशी बोलत आहे का?`;
+        return `नमस्कार, मी Shaha Finlease कडून ऑटोमेटेड असिस्टंट बोलत आहे. हा कॉल गुणवत्ता आणि पडताळणीसाठी रेकॉर्ड केला जात आहे. मी ${customer.name} यांच्याशी बोलत आहे का?`;
       }
       return `Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for quality and verification purposes. Am I speaking with ${customer.name}?`;
     }
@@ -1376,6 +1480,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     async function processBorrowerTurn(inputText) {
       if (!activeCall || activeCall.ended) return;
 
+      turnStartTimestamp = performance.now();
       const t0 = performance.now();
       const customer = activeCall.customer;
 
@@ -1405,6 +1510,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            call_id: activeCall.call_id,
             customer_id: customer.customer_id,
             input_text: inputText,
             stage: activeCall.stage,
@@ -1414,6 +1520,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
         if (turnRes.ok) {
           const turnData = await turnRes.json();
+          // Abort turn processing if user clicked 'End / Drop Midway' while waiting
+          if (!activeCall || activeCall.ended) return;
           botReply = turnData.bot_reply;
           activeCall.stage = turnData.stage;
           if (turnData.detected_language) activeCall.language = turnData.detected_language;
@@ -1430,6 +1538,9 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       } catch (backendErr) {
         console.warn('Backend turn unavailable, using local NLU fallback:', backendErr);
       }
+
+      // Ensure call was not dropped while waiting
+      if (!activeCall || activeCall.ended) return;
 
       // 2. Deterministic local fallback if backend did not return reply
       if (!botReply) {
@@ -1556,6 +1667,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         guardrailEl.textContent = `Backend Guardrail Intercepted: ${guardrailCheck.violations.join(', ')}`;
       }
 
+      if (!activeCall || activeCall.ended) return;
+
       activeCall.transcript.push({
         speaker: 'Bot',
         lang: detectedLang,
@@ -1590,8 +1703,16 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
     function updateLatencyBadge(ms) {
       const el = document.getElementById('latencyValueText');
-      el.textContent = `${ms} ms ✓ (<3s)`;
+      el.textContent = `${ms} ms NLU (<3s ✓)`;
       el.className = ms < 3000
+        ? 'mono text-xs sm:text-sm font-bold text-[#5D8C3E]'
+        : 'mono text-xs sm:text-sm font-bold text-[#C0392B]';
+    }
+
+    function updateE2ELatencyBadge(totalMs) {
+      const el = document.getElementById('latencyValueText');
+      el.textContent = `${totalMs} ms Total E2E (<3s ✓)`;
+      el.className = totalMs < 3000
         ? 'mono text-xs sm:text-sm font-bold text-[#5D8C3E]'
         : 'mono text-xs sm:text-sm font-bold text-[#C0392B]';
     }
@@ -1619,15 +1740,17 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       else if (clockMode === 'out_early') simHour = 6;
       else if (clockMode === 'in_window') simHour = 11;
 
-      // Check FastAPI preflight gatekeeper (POST /api/calls/preflight)
+      // Feature #4 Backend-Owned Call Lifecycle (POST /api/calls/initiate)
+      let backendCallId = null;
+      let backendOpening = null;
       try {
-        const preRes = await fetch('/api/calls/preflight', {
+        const initRes = await fetch('/api/calls/initiate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ customer_id: customerId, simulated_hour: simHour })
         });
-        if (!preRes.ok) {
-          const errData = await preRes.json().catch(() => ({}));
+        if (!initRes.ok) {
+          const errData = await initRes.json().catch(() => ({}));
           const reason = errData.detail || 'Call refused by compliance gatekeeper.';
           if (reason.includes('Do Not Call')) {
             customer.do_not_call = 1;
@@ -1641,6 +1764,9 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           }
           return;
         }
+        const initData = await initRes.json();
+        backendCallId = initData.call_id;
+        if (initData.opening_disclosure) backendOpening = initData.opening_disclosure;
       } catch (err) {
         // Fallback to client preflight check if backend unreachable
         if (!windowCheck.allowed) {
@@ -1668,10 +1794,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const now = new Date();
       const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
       const openingLatency = Math.floor(290 + Math.random() * 70);
-      const openingText = generateOpeningGreeting(customer);
+      const openingText = backendOpening || generateOpeningGreeting(customer);
 
       activeCall = {
-        call_id: `CALL-${1000 + calls.length + 1}`,
+        call_id: backendCallId || `CALL-${1000 + calls.length + 1}`,
         customer_id: customer.customer_id,
         customer_name: customer.name,
         phone: customer.phone,
@@ -1721,6 +1847,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       resetSilenceCountdown();
       silenceTimerInterval = setInterval(() => {
         if (!activeCall || activeCall.ended) return;
+        // Borrower silence countdown pauses while bot is speaking so audio is never cut off
+        if (isBotSpeaking) return;
         activeCall.silenceRemaining = Math.max(0, activeCall.silenceRemaining - 1);
         updateSilenceBarUI();
         if (activeCall.silenceRemaining <= 0) {
@@ -1803,6 +1931,13 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     function finalizeActiveCall(outcome, stopReason = '') {
       if (!activeCall || activeCall.ended) return;
       activeCall.ended = true;
+
+      // Only cut off audio if manually stopped midway or dropped; let final bot closing speech complete
+      if (stopReason.includes('midway') || stopReason.includes('Dropped') || stopReason.includes('silence') || stopReason.includes('timeout')) {
+        stopAllAudio();
+      }
+      stopAllRecording();
+      clearAutoPlayTimeouts();
       clearInterval(callDurationInterval);
       clearInterval(silenceTimerInterval);
 
@@ -1832,11 +1967,19 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       calls.unshift(savedCall);
       selectedCallDetailId = savedCall.call_id;
 
-      document.getElementById('callStateBadge').textContent = `SAVED · ${outcome.toUpperCase()}`;
-      document.getElementById('callStateBadge').className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 font-semibold';
-      document.getElementById('lastOutcomePill').textContent = `Saved Outcome: ${outcome}`;
+      const callStateBadge = document.getElementById('callStateBadge');
+      if (callStateBadge) {
+        callStateBadge.textContent = `CALL ENDED · ${outcome.toUpperCase()}`;
+        callStateBadge.className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 font-semibold';
+      }
+      const lastOutcomePill = document.getElementById('lastOutcomePill');
+      if (lastOutcomePill) {
+        lastOutcomePill.textContent = `Outcome: ${outcome}`;
+      }
       document.getElementById('endCallBtn').disabled = true;
       document.getElementById('triggerSilenceTimeoutBtn').disabled = true;
+      const silenceCount = document.getElementById('silenceCountdownText');
+      if (silenceCount) silenceCount.textContent = 'Ended';
 
       renderLiveTranscript();
       updateReportView();
@@ -1913,7 +2056,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         if (res.ok) {
           const list = await res.json();
           if (Array.isArray(list) && list.length > 0) {
-            customers = list;
+            customers = list.map(c => ({
+              ...c,
+              birth_year: c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || 1985
+            }));
             renderCustomerTable();
             updateSelectedCustomerHeader();
           }
@@ -1989,13 +2135,14 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         const dncBadge = c.do_not_call === 1
           ? '<span class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30 font-semibold">DNC</span>'
           : '';
+        const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || '—';
         return `
           <tr data-customer-row="${c.customer_id}" class="cursor-pointer transition ${isSelected ? 'bg-[#EADBC0]/55 border-l-4 border-l-[#3D2817]' : 'hover:bg-[#F7EFE2]'}">
             <td class="py-2.5 px-3 font-medium text-[#3D2817]">
               <span class="mono text-[#B8763D] font-semibold mr-1">${c.customer_id}</span> ${c.name} ${dncBadge}
             </td>
             <td class="py-2.5 px-2 mono text-[#6B5541]">${c.phone}</td>
-            <td class="py-2.5 px-2 mono text-[#3D2817] font-medium">${c.birth_year}</td>
+            <td class="py-2.5 px-2 mono text-[#3D2817] font-medium">${yr}</td>
             <td class="py-2.5 px-2">
               <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.language === 'Hindi' ? 'bg-[#D4A056]/20 text-[#6B4423]' : 'bg-[#4B8FB8]/15 text-[#4B8FB8]'}">${c.language}</span>
             </td>
@@ -2012,14 +2159,23 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     function updateSelectedCustomerHeader() {
       const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
       if (!c) return;
+      const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || 1985;
       document.getElementById('activeCustomerTitle').textContent = `${c.customer_id} · ${c.name}`;
-      document.getElementById('activeCustomerMeta').textContent = `${c.phone} · Birth Year: ${c.birth_year} · Default: ${c.language}`;
+      document.getElementById('activeCustomerMeta').textContent = `${c.phone} · Preferred: ${c.language} · Birth Year: ${yr}`;
       document.getElementById('detectedLangBadge').textContent = c.language === 'Hindi' ? 'Hindi (hi-IN)' : 'English (en-IN)';
 
       const correctBtn = document.getElementById('btnCorrectBirthYear');
-      correctBtn.textContent = `🎂 Give Correct Birth Year (${c.birth_year})`;
-      correctBtn.setAttribute('data-year', String(c.birth_year));
-      correctBtn.setAttribute('data-lang', c.language);
+      if (correctBtn) {
+        correctBtn.textContent = `🎂 Give Correct Birth Year (${yr})`;
+        correctBtn.setAttribute('data-lang', c.language);
+      }
+
+      const wrongYear = yr >= 1990 ? yr - 4 : yr + 4;
+      const wrongBtn = document.getElementById('btnWrongBirthYear');
+      if (wrongBtn) {
+        wrongBtn.textContent = `❌ Wrong Birth Year (${wrongYear})`;
+        wrongBtn.setAttribute('data-quick-reply', c.language === 'Hindi' ? `मेरा जन्म का साल ${wrongYear} है।` : `My birth year is ${wrongYear}.`);
+      }
 
       const sc = TEST_SCENARIOS[c.customer_id];
       if (sc) {
@@ -2346,12 +2502,36 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
       document.getElementById('endCallBtn').addEventListener('click', () => {
         if (!activeCall || activeCall.ended) return;
+
+        // 1. Immediately cut off all audio playback, microphone recording, and auto-play scenarios
+        stopAllAudio();
+        stopAllRecording();
+        clearAutoPlayTimeouts();
+
+        // 2. Determine correct compliance outcome
+        let finalOutcome = 'Not connected';
+        let stopReason = 'Call dropped midway before customer response';
+
+        if (activeCall.connected) {
+          if (activeCall.stage === 'AWAITING_BIRTH_YEAR') {
+            finalOutcome = 'Verification failed';
+            stopReason = 'Call disconnected midway by user during birth year verification';
+          } else if (activeCall.stage === 'AWAITING_CALLBACK_TIME') {
+            finalOutcome = 'Third party answered';
+            stopReason = 'Call disconnected midway while relative was speaking';
+          } else {
+            finalOutcome = 'Not connected';
+            stopReason = 'Call disconnected midway by user';
+          }
+        }
+
         activeCall.transcript.push({
           speaker: 'System',
           lang: activeCall.language,
-          text: '[Call stopped midway by user — saving partial transcript & outcome to database.]'
+          text: `[Call ended midway by user — call terminated and saved to database with outcome: ${finalOutcome}.]`
         });
-        finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Call stopped midway');
+
+        finalizeActiveCall(finalOutcome, stopReason);
       });
 
       document.getElementById('triggerSilenceTimeoutBtn').addEventListener('click', () => {
@@ -2382,9 +2562,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
       document.getElementById('btnCorrectBirthYear').addEventListener('click', async () => {
         const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
+        const year = DEMO_FIXTURE_YEARS[c.customer_id] || 1985;
         const text = c.language === 'Hindi'
-          ? `मेरा जन्म का साल ${c.birth_year} है।`
-          : `My birth year is ${c.birth_year}.`;
+          ? `मेरा जन्म का साल ${year} है।`
+          : `My birth year is ${year}.`;
         if (!activeCall || activeCall.ended) {
           await startCallForCustomer(c.customer_id);
           setTimeout(() => processBorrowerTurn(text), 350);
@@ -2407,35 +2588,109 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         }
       });
 
+      async function startWhisperUploadFlow() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          activeMicStream = stream;
+          audioChunksRecorded = [];
+          mediaRecorderInstance = new MediaRecorder(stream);
+          mediaRecorderInstance.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunksRecorded.push(e.data);
+          };
+          mediaRecorderInstance.onstop = async () => {
+            const blob = new Blob(audioChunksRecorded, { type: 'audio/webm' });
+            if (activeMicStream) {
+              activeMicStream.getTracks().forEach(track => track.stop());
+              activeMicStream = null;
+            }
+            document.getElementById('micLabel').textContent = 'Transcribing (Groq Whisper)...';
+            try {
+              const fd = new FormData();
+              fd.append('file', blob, 'user_mic.webm');
+              const res = await fetch('/api/stt', { method: 'POST', body: fd });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.text) {
+                  document.getElementById('borrowerTextInput').value = data.text;
+                  showToast('Groq Whisper STT Transcribed', `"${data.text}"`, 'emerald');
+                  if (!activeCall || activeCall.ended) {
+                    await startCallForCustomer(selectedCustomerId);
+                    setTimeout(() => processBorrowerTurn(data.text), 350);
+                  } else {
+                    processBorrowerTurn(data.text);
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('Whisper STT upload failed:', err);
+            } finally {
+              document.getElementById('micLabel').textContent = 'Speak';
+              isRecordingMedia = false;
+            }
+          };
+          mediaRecorderInstance.start();
+          isRecordingMedia = true;
+          document.getElementById('micLabel').textContent = 'Recording (Whisper) · Click to Stop';
+          showToast('Groq Whisper STT Recording', 'Speak now. Click Speak button again when done to transcribe with Groq Whisper.', 'indigo');
+        } catch (err) {
+          showToast('Microphone Notice', 'Please allow microphone access or type your response in the text box.', 'rose');
+          document.getElementById('micLabel').textContent = 'Speak';
+          isRecordingMedia = false;
+        }
+      }
+
       document.getElementById('micButton').addEventListener('click', () => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-          showToast('Speech Recognition Info', 'Your browser iframe does not expose Web Speech STT; use the text box or 1-click borrower buttons.', 'indigo');
+        if (isRecordingMedia && mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') {
+          mediaRecorderInstance.stop();
           return;
         }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          // Automatic seamless fallback to Groq Whisper STT endpoint
+          startWhisperUploadFlow();
+          return;
+        }
+
         try {
           const rec = new SpeechRecognition();
+          currentWebSpeechRec = rec;
           const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
           rec.lang = c.language === 'Hindi' ? 'hi-IN' : 'en-IN';
           rec.interimResults = false;
-          document.getElementById('micLabel').textContent = 'Listening...';
+          document.getElementById('micLabel').textContent = 'Listening (Web Speech)...';
+          let speechHandled = false;
           rec.onresult = (event) => {
+            speechHandled = true;
+            currentWebSpeechRec = null;
             const transcript = event.results[0][0].transcript;
             document.getElementById('borrowerTextInput').value = transcript;
+            document.getElementById('micLabel').textContent = 'Speak';
             if (!activeCall || activeCall.ended) {
-              startCallForCustomer(selectedCustomerId);
+              startCallForCustomer(selectedCustomerId).then(() => {
+                setTimeout(() => processBorrowerTurn(transcript), 350);
+              });
+            } else {
+              processBorrowerTurn(transcript);
             }
-            processBorrowerTurn(transcript);
+          };
+          rec.onerror = (e) => {
+            currentWebSpeechRec = null;
+            console.warn('Web Speech API error, triggering Groq Whisper fallback:', e);
+            if (!speechHandled) {
+              startWhisperUploadFlow();
+            }
           };
           rec.onend = () => {
-            document.getElementById('micLabel').textContent = 'Speak';
-          };
-          rec.onerror = () => {
-            document.getElementById('micLabel').textContent = 'Speak';
+            currentWebSpeechRec = null;
+            if (!speechHandled && !isRecordingMedia) {
+              document.getElementById('micLabel').textContent = 'Speak';
+            }
           };
           rec.start();
         } catch (err) {
-          document.getElementById('micLabel').textContent = 'Speak';
+          currentWebSpeechRec = null;
+          startWhisperUploadFlow();
         }
       });
 

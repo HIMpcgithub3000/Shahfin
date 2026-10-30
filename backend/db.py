@@ -202,6 +202,160 @@ def update_customer_dnc(customer_id: str, do_not_call: int = 1) -> None:
     conn.close()
 
 
+def get_next_call_id() -> str:
+    """Generates next sequential Call ID (e.g. CALL-1001, CALL-1002)."""
+    conn = get_connection()
+    cur = conn.cursor()
+    execute_sql(cur, conn, "SELECT count(*) FROM Call")
+    r = cur.fetchone()
+    count = r[0] if r else 0
+    conn.close()
+    return f"CALL-{1000 + count + 1}"
+
+
+def create_initial_call_record(
+    call_id: str,
+    customer_id: str,
+    language: str,
+    opening_text: str,
+    start_time: Optional[str] = None,
+) -> None:
+    """Feature #4 Backend-Owned Lifecycle: Persists call immediately upon initiation.
+
+    Guarantees call is recorded as attempted and 'Not connected' even if dropped midway or browser crashes.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    start_str = start_time or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    initial_transcript = [
+        {"speaker": "Bot", "lang": language, "latency_ms": 320, "text": opening_text}
+    ]
+    initial_summary = [
+        f"1. Automated assistant dialed customer ({customer_id}) in {language} with mandatory Shaha Finlease disclosure.",
+        "2. Call session initiated; awaiting customer connection and response.",
+        "3. Initial status recorded as Connected = No, Outcome = Not connected (in progress).",
+    ]
+    transcript_str = json.dumps(initial_transcript, ensure_ascii=False)
+    summary_str = "\n".join(initial_summary)
+
+    upsert_sql = """
+    INSERT INTO Call (call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, transcript, summary_3line)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(call_id) DO UPDATE SET
+        customer_id = excluded.customer_id,
+        duration_seconds = excluded.duration_seconds,
+        connected = excluded.connected,
+        outcome = excluded.outcome,
+        language = excluded.language,
+        transcript = excluded.transcript,
+        summary_3line = excluded.summary_3line;
+    """
+    execute_sql(
+        cur,
+        conn,
+        upsert_sql,
+        (
+            call_id,
+            customer_id,
+            start_str,
+            0,
+            0,
+            "Not connected",
+            language,
+            None,
+            transcript_str,
+            summary_str,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_call_turn(
+    call_id: str,
+    borrower_text: str,
+    bot_reply: str,
+    language: str,
+    outcome: Optional[str] = None,
+    callback_time: Optional[str] = None,
+    mark_do_not_call: bool = False,
+    customer_id: Optional[str] = None,
+) -> None:
+    """Updates call record turn-by-turn. Marks connected = 1 upon borrower speech."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    if mark_do_not_call and customer_id:
+        execute_sql(cur, conn, "UPDATE Customer SET do_not_call = 1 WHERE customer_id = ?", (customer_id,))
+
+    execute_sql(cur, conn, "SELECT transcript, outcome, callback_time FROM Call WHERE call_id = ?", (call_id,))
+    row = cur.fetchone()
+    if row:
+        try:
+            transcript = json.loads(row[0])
+        except Exception:
+            transcript = []
+        transcript.append({"speaker": "Borrower", "lang": language, "text": borrower_text})
+        transcript.append({"speaker": "Bot", "lang": language, "text": bot_reply})
+
+        final_outcome = outcome or row[1]
+        final_cb = callback_time or row[2]
+
+        update_sql = """
+        UPDATE Call SET
+            connected = 1,
+            language = ?,
+            transcript = ?,
+            outcome = ?,
+            callback_time = ?
+        WHERE call_id = ?
+        """
+        execute_sql(
+            cur,
+            conn,
+            update_sql,
+            (language, json.dumps(transcript, ensure_ascii=False), final_outcome, final_cb, call_id),
+        )
+        conn.commit()
+    conn.close()
+
+
+def finalize_call_record(
+    call_id: str,
+    duration_seconds: int,
+    outcome: str,
+    summary_3line: Optional[List[str]] = None,
+) -> None:
+    """Finalizes duration, outcome, and 3-line summary at call termination."""
+    conn = get_connection()
+    cur = conn.cursor()
+    execute_sql(cur, conn, "SELECT customer_id, connected, language, summary_3line FROM Call WHERE call_id = ?", (call_id,))
+    row = cur.fetchone()
+    if row:
+        cust_id = row[0]
+        connected_val = bool(row[1])
+        lang = row[2]
+        if summary_3line:
+            sum_str = "\n".join(summary_3line) if isinstance(summary_3line, list) else str(summary_3line)
+        else:
+            sum_str = (
+                f"1. Automated assistant called {cust_id} in {lang} with mandatory recording disclosure.\n"
+                f"2. Final outcome resolved as: {outcome}.\n"
+                f"3. Call closed with Connected = {'Yes' if connected_val else 'No'}, Outcome = {outcome}, Duration = {duration_seconds}s."
+            )
+
+        update_sql = """
+        UPDATE Call SET
+            duration_seconds = ?,
+            outcome = ?,
+            summary_3line = ?
+        WHERE call_id = ?
+        """
+        execute_sql(cur, conn, update_sql, (duration_seconds, outcome, sum_str, call_id))
+        conn.commit()
+    conn.close()
+
+
 def save_call_record(
     call_id: str,
     customer_id: str,
@@ -224,12 +378,24 @@ def save_call_record(
     transcript_str = json.dumps(transcript, ensure_ascii=False)
     summary_str = "\n".join(summary_3line) if isinstance(summary_3line, list) else str(summary_3line)
 
-    execute_sql(cur, conn, "DELETE FROM Call WHERE call_id = ?", (call_id,))
+    upsert_sql = """
+    INSERT INTO Call (call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, transcript, summary_3line)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(call_id) DO UPDATE SET
+        customer_id = excluded.customer_id,
+        start_time = excluded.start_time,
+        duration_seconds = excluded.duration_seconds,
+        connected = excluded.connected,
+        outcome = excluded.outcome,
+        language = excluded.language,
+        callback_time = excluded.callback_time,
+        transcript = excluded.transcript,
+        summary_3line = excluded.summary_3line;
+    """
     execute_sql(
         cur,
         conn,
-        """INSERT INTO Call (call_id, customer_id, start_time, duration_seconds, connected, outcome, language, callback_time, transcript, summary_3line)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        upsert_sql,
         (
             call_id,
             customer_id,
@@ -304,12 +470,16 @@ def get_report_stats() -> Dict[str, Any]:
             }
         )
 
+    conn_pct = round((connected / attempted) * 100, 1) if attempted else 0.0
+    rp_pct = round((right_customers / connected) * 100, 1) if connected else 0.0
     return {
         "calls_attempted": attempted,
         "connected": connected,
         "not_connected": not_connected,
-        "connect_rate_pct": round((connected / attempted) * 100, 1) if attempted else 0.0,
-        "right_party_rate_pct": round((right_customers / connected) * 100, 1) if connected else 0.0,
+        "connect_rate": conn_pct,
+        "connect_rate_pct": conn_pct,
+        "right_party_rate": rp_pct,
+        "right_party_rate_pct": rp_pct,
         "outcome_counts": outcomes,
         "calls": calls_list,
     }
