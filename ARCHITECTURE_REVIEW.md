@@ -21,16 +21,16 @@ The application follows an asynchronous, event-driven client-server architecture
 
 ```mermaid
 flowchart TD
-    User([Borrower / Agent]) -->|Microphone / UI| FE[Frontend Call Console]
-    FE -->|1. Preflight Check| Gate[8 AM - 7 PM Calling Window & DNC Check]
-    FE -->|2. POST /api/calls/initiate| DB[(Database: dbo.Call & dbo.Customer)]
-    FE -->|3. Audio / Web Speech STT| FastAPIServer[FastAPI Backend Engine]
-    FastAPIServer -->|4. Speech-to-Text Fallback| WhisperSTT[Groq Whisper STT]
-    FastAPIServer -->|5. NLU & State Progression| NLU[Groq LLM / Rule Fallback]
-    NLU -->|6. Unfiltered Bot Reply| SafetyGate[Deterministic Compliance Interceptor]
-    SafetyGate -->|7. Sanitized Safe Reply| TTS[Microsoft Edge-TTS Synthesis]
-    TTS -->|8. MP3 Audio Stream| FE
-    SafetyGate -->|9. Finalize Call & Transcript| DB
+    User(["Borrower / Agent"]) -->|"Microphone / UI"| FE["Frontend Call Console"]
+    FE -->|"1. Preflight Check"| Gate["8 AM - 7 PM Window and DNC Check"]
+    FE -->|"2. POST /api/calls/initiate"| DB[("Database: dbo.Call and dbo.Customer")]
+    FE -->|"3. Audio / Web Speech STT"| FastAPIServer["FastAPI Backend Engine"]
+    FastAPIServer -->|"4. Speech-to-Text Fallback"| WhisperSTT["Groq Whisper STT"]
+    FastAPIServer -->|"5. NLU & State Progression"| NLU["Groq LLM / Rule Fallback"]
+    NLU -->|"6. Unfiltered Bot Reply"| SafetyGate["Deterministic Compliance Interceptor"]
+    SafetyGate -->|"7. Sanitized Safe Reply"| TTS["Microsoft Edge-TTS Synthesis"]
+    TTS -->|"8. MP3 Audio Stream"| FE
+    SafetyGate -->|"9. Finalize Call & Transcript"| DB
 ```
 
 ---
@@ -88,7 +88,7 @@ stateDiagram-v2
     AWAITING_BIRTH_YEAR --> COMPLETED_RIGHT_CUSTOMER: Correct 4-Digit Birth Year
     AWAITING_BIRTH_YEAR --> COMPLETED_VERIF_FAILED: Incorrect Birth Year
     
-    AWAITING_CALLBACK_TIME --> COMPLETED_CALLBACK_REQ: Time Provided (e.g. 6:30 PM)
+    AWAITING_CALLBACK_TIME --> COMPLETED_CALLBACK_REQ: Callback Time Provided
     AWAITING_CALLBACK_TIME --> COMPLETED_THIRD_PARTY: No Time Provided
     
     COMPLETED_RIGHT_CUSTOMER --> [*]: POST /api/calls/finalize
@@ -145,24 +145,24 @@ The database conforms strictly to Microsoft SQL Server standards, using `dbo.Cus
 erDiagram
     Customer ||--o{ Call : "initiates"
     Customer {
-        varchar customer_id PK "e.g. C001"
+        varchar customer_id PK "Customer ID"
         varchar name "Borrower Full Name"
-        varchar phone "E.164 Phone Number"
-        int birth_year "4-Digit Birth Year"
-        varchar language "Hindi / English / Marathi"
-        int do_not_call "0 = Active, 1 = DNC Suppressed"
+        varchar phone "E164 Phone Number"
+        int birth_year "4 Digit Birth Year"
+        varchar language "Preferred Language"
+        int do_not_call "DNC Flag"
     }
     Call {
-        varchar call_id PK "e.g. CALL-1001"
-        varchar customer_id FK "References Customer(customer_id)"
-        timestamp start_time "Call Initiation Timestamp"
-        int duration_seconds "Call Duration in Seconds"
-        boolean connected "True if borrower spoke within 15s"
-        varchar outcome "1 of 6 Canonical Outcomes"
-        varchar language "Call Language"
-        varchar callback_time "e.g. 6:30 PM (or NULL)"
-        text transcript "JSON Array of Conversation Turns"
-        text summary_3line "JSON Array of 3 Audit Sentences"
+        varchar call_id PK "Call ID"
+        varchar customer_id FK "Customer ID"
+        timestamp start_time "Start Timestamp"
+        int duration_seconds "Duration Seconds"
+        boolean connected "Connected Flag"
+        varchar outcome "Canonical Outcome"
+        varchar language "Language"
+        varchar callback_time "Callback Time"
+        text transcript "Transcript JSON"
+        text summary_3line "Summary JSON"
     }
 ```
 

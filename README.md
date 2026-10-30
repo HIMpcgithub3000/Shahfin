@@ -42,58 +42,59 @@ This Conversational AI Voicebot serves as the **automated pre-calling contact ve
 
 ```mermaid
 flowchart TD
-    subgraph Client["Frontend Call Console (HTML5 / Vanilla JS)"]
-        UI[Interactive Call Console & Report View]
-        STT_Browser[Web Speech Recognition API]
-        AudioRec[MediaRecorder Audio Capture]
-        AudioPlayer[HTML5 Neural Audio Player]
+    subgraph Client["Frontend Call Console"]
+        UI["Interactive Call Console & Report View"]
+        STT_Browser["Web Speech Recognition API"]
+        AudioRec["MediaRecorder Audio Capture"]
+        AudioPlayer["HTML5 Neural Audio Player"]
     end
 
-    subgraph Preflight["Preflight Gatekeeper (compliance_gate.py)"]
-        TimeCheck{Simulated Time: 08:00 - 19:00 IST?}
-        DNCCheck{Customer do_not_call == 1?}
+    subgraph Preflight["Preflight Gatekeeper"]
+        TimeCheck{"Simulated Time: 08:00 - 19:00 IST?"}
+        DNCCheck{"Customer do_not_call == 1?"}
     end
 
-    subgraph BackendEngine["FastAPI Backend (backend/main.py)"]
-        StateRouter[RPV State Machine & Session Manager]
-        WhisperFallback[Groq Whisper STT Endpoint]
+    subgraph BackendEngine["FastAPI Backend Engine"]
+        StateRouter["RPV State Machine & Session Manager"]
+        WhisperFallback["Groq Whisper STT Endpoint"]
     end
 
-    subgraph Intelligence["NLU & Language Engine (voice_pipeline.py)"]
-        LLM_Engine[Groq Llama-3.3 70B / Qwen 2.5]
-        RuleEngine[Deterministic Fallback Intent Parser]
+    subgraph Intelligence["NLU & Language Engine"]
+        LLM_Engine["Groq Llama-3.3 70B / Qwen 2.5"]
+        RuleEngine["Deterministic Fallback Intent Parser"]
     end
 
     subgraph Safety["Deterministic Compliance Interceptor"]
-        Guardrails[6 Regex Compliance Filters]
+        Guardrails["6 Regex Compliance Filters"]
     end
 
     subgraph AudioSynth["Speech Synthesis"]
-        EdgeTTS[Microsoft Edge-TTS Neural Streaming]
+        EdgeTTS["Microsoft Edge-TTS Neural Streaming"]
     end
 
-    subgraph Database["Durable Relational Database (backend/db.py)"]
-        PG[(PostgreSQL Docker / Local SQL Server)]
-        SQLite[(Zero-Config SQLite Fallback)]
+    subgraph Database["Durable Relational Database"]
+        PG[("PostgreSQL Database")]
+        SQLite[("SQLite Fallback Database")]
     end
 
-    UI -->|1. Dial Request| TimeCheck
-    TimeCheck -->|Outside Hours| Refused[403 Forbidden Modal - No DB Record]
-    TimeCheck -->|Within Window| DNCCheck
-    DNCCheck -->|DNC Active| Refused
-    DNCCheck -->|Permitted| StateRouter
+    UI -->|"1. Dial Request"| TimeCheck
+    TimeCheck -->|"Outside Hours"| Refused["403 Forbidden Modal - No DB Record"]
+    TimeCheck -->|"Within Window"| DNCCheck
+    DNCCheck -->|"DNC Active"| Refused
+    DNCCheck -->|"Permitted"| StateRouter
 
-    StateRouter -->|2. Create Call Record (duration=0)| PG
-    StateRouter -->|Fallback| SQLite
+    StateRouter -->|"2. Create Call Record"| PG
+    StateRouter -->|"Fallback"| SQLite
 
-    STT_Browser -->|3a. Real-time Transcript| StateRouter
-    AudioRec -->|3b. Audio WebM Fallback| WhisperFallback --> StateRouter
+    STT_Browser -->|"3a. Real-time Transcript"| StateRouter
+    AudioRec -->|"3b. Audio WebM Fallback"| WhisperFallback
+    WhisperFallback --> StateRouter
 
     StateRouter --> Intelligence
     Intelligence --> Safety
-    Safety -->|Sanitized Safe Text| EdgeTTS
-    EdgeTTS -->|Neural MP3 Stream| AudioPlayer
-    Safety -->|Final Outcome & 3-Line Summary| PG
+    Safety -->|"Sanitized Safe Text"| EdgeTTS
+    EdgeTTS -->|"Neural MP3 Stream"| AudioPlayer
+    Safety -->|"Final Outcome & Summary"| PG
 ```
 
 ---
@@ -105,17 +106,17 @@ flowchart TD
 ```mermaid
 stateDiagram-v2
     [*] --> INITIATED: Start Call
-    INITIATED --> AWAITING_NAME: Bot Recites Opening Disclosure (<10s)
+    INITIATED --> AWAITING_NAME: Bot Recites Opening Disclosure
     
-    AWAITING_NAME --> AWAITING_BIRTH_YEAR: Name Confirmed ("हाँ, मैं राहुल बोल रहा हूँ")
-    AWAITING_NAME --> WRONG_NUMBER: Wrong Number Reported ("गलत नंबर है")
-    AWAITING_NAME --> AWAITING_CALLBACK: Third Party Answers ("भाई बाहर गए हैं")
-    AWAITING_NAME --> NOT_CONNECTED: 15s Silence Timeout / Dropped Midway
+    AWAITING_NAME --> AWAITING_BIRTH_YEAR: Name Confirmed
+    AWAITING_NAME --> WRONG_NUMBER: Wrong Number Reported
+    AWAITING_NAME --> AWAITING_CALLBACK: Third Party Answers
+    AWAITING_NAME --> NOT_CONNECTED: 15s Silence or Dropped Midway
     
-    AWAITING_BIRTH_YEAR --> RIGHT_CUSTOMER: Correct 4-Digit Birth Year (e.g. 1985)
-    AWAITING_BIRTH_YEAR --> VERIF_FAILED: Incorrect Birth Year (e.g. 1999)
+    AWAITING_BIRTH_YEAR --> RIGHT_CUSTOMER: Correct 4-Digit Birth Year
+    AWAITING_BIRTH_YEAR --> VERIF_FAILED: Incorrect Birth Year
     
-    AWAITING_CALLBACK --> CALLBACK_REQUESTED: Specific Time Provided ("शाम 6:30 बजे")
+    AWAITING_CALLBACK --> CALLBACK_REQUESTED: Specific Callback Time Provided
     AWAITING_CALLBACK --> THIRD_PARTY_ANSWERED: No Callback Time Provided
     
     RIGHT_CUSTOMER --> [*]: Persist to SQL
