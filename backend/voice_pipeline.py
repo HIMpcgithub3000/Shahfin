@@ -53,8 +53,18 @@ def _get_gemini_key() -> str:
     return os.getenv("GEMINI_API_KEY", "").strip()
 
 
+def _get_sarvam_key() -> str:
+    return os.getenv("SARVAM_API_KEY", "").strip()
+
+
 GROQ_API_KEY = _get_groq_key()
 GEMINI_API_KEY = _get_gemini_key()
+
+SARVAM_LANG_CODES = {
+    "Hindi": "hi-IN",
+    "English": "en-IN",
+    "Marathi": "mr-IN",
+}
 
 EDGE_VOICES = {
     "Hindi": "hi-IN-SwaraNeural",
@@ -164,11 +174,95 @@ def extract_callback_time(text: str) -> Optional[str]:
     return None
 
 
-async def synthesize_tts_mp3(text: str, language: str) -> Optional[bytes]:
-    """Synthesizes high-quality Indian neural voice via edge-tts."""
-    if edge_tts is None:
+def synthesize_sarvam_bulbul(text: str, language: str) -> Optional[bytes]:
+    """Synthesizes authentic Indian neural voice via Sarvam AI Bulbul (v3 / v4-flash)."""
+    sarvam_key = _get_sarvam_key()
+    if not sarvam_key:
         return None
     clean_text = re.sub(r"[*#_`~]", "", text).strip()
+    target_lang = SARVAM_LANG_CODES.get(language, "hi-IN")
+    tts_model = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3").strip()
+    speaker = os.getenv("SARVAM_TTS_SPEAKER", "meera").strip()
+
+    url = "https://api.sarvam.ai/text-to-speech"
+    headers = {
+        "api-subscription-key": sarvam_key,
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "inputs": [clean_text],
+        "target_language_code": target_lang,
+        "speaker": speaker,
+        "pitch": 0,
+        "pace": 1.0,
+        "loudness": 1.5,
+        "speech_sample_rate": 22050,
+        "enable_preprocessing": True,
+        "model": tts_model,
+    }
+    try:
+        import requests
+        resp = requests.post(url, headers=headers, json=payload, timeout=4.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            audios = data.get("audios", [])
+            if audios:
+                import base64
+                return base64.b64decode(audios[0])
+            print(f"[Sarvam TTS Warning] Empty audios array: {data}")
+        else:
+            print(f"[Sarvam TTS Error] HTTP {resp.status_code}: {resp.text}")
+    except Exception as e:
+        print(f"[Sarvam TTS Exception] {e}")
+    return None
+
+
+def transcribe_sarvam_saaras(audio_bytes: bytes, filename: str = "audio.wav", language: str = "Hindi") -> Optional[str]:
+    """Transcribes audio using Sarvam AI Saaras (v3) speech-to-text."""
+    sarvam_key = _get_sarvam_key()
+    if not sarvam_key:
+        return None
+    url = "https://api.sarvam.ai/speech-to-text"
+    headers = {
+        "api-subscription-key": sarvam_key,
+    }
+    lang_code = SARVAM_LANG_CODES.get(language, "unknown")
+    stt_model = os.getenv("SARVAM_STT_MODEL", "saaras:v3").strip()
+    try:
+        import requests
+        files = {"file": (filename, audio_bytes, "audio/wav")}
+        data = {
+            "model": stt_model,
+            "language_code": lang_code,
+            "with_diacritics": False,
+        }
+        resp = requests.post(url, headers=headers, files=files, data=data, timeout=6.0)
+        if resp.status_code == 200:
+            res_json = resp.json()
+            transcript = res_json.get("transcript", "").strip()
+            if transcript:
+                return transcript
+        else:
+            print(f"[Sarvam STT Error] HTTP {resp.status_code}: {resp.text}")
+    except Exception as e:
+        print(f"[Sarvam STT Exception] {e}")
+    return None
+
+
+async def synthesize_tts_mp3(text: str, language: str) -> Optional[bytes]:
+    """Synthesizes high-quality Indian neural voice via Sarvam Bulbul (v3 / v4-flash),
+    falling back seamlessly to Microsoft edge-tts."""
+    clean_text = re.sub(r"[*#_`~]", "", text).strip()
+
+    # 1. Attempt Sarvam AI Bulbul if SARVAM_API_KEY is configured
+    if _get_sarvam_key():
+        sarvam_audio = synthesize_sarvam_bulbul(clean_text, language)
+        if sarvam_audio:
+            return sarvam_audio
+
+    # 2. Resilient fallback to Microsoft Edge-TTS
+    if edge_tts is None:
+        return None
     voice = EDGE_VOICES.get(language, "hi-IN-SwaraNeural")
     try:
         communicate = edge_tts.Communicate(clean_text, voice, rate="+2%")
@@ -190,6 +284,15 @@ async def synthesize_tts_mp3(text: str, language: str) -> Optional[bytes]:
         except Exception as retry_err:
             print(f"[TTS Error] synthesize_tts_mp3 retry failed: {retry_err}")
             return None
+
+
+def transcribe_audio_stt(audio_bytes: bytes, filename: str = "audio.wav", language: str = "Hindi") -> Optional[str]:
+    """Transcribes audio using Sarvam Saaras (v3), falling back to Groq whisper-large-v3-turbo."""
+    if _get_sarvam_key():
+        sarvam_text = transcribe_sarvam_saaras(audio_bytes, filename, language)
+        if sarvam_text:
+            return sarvam_text
+    return transcribe_groq_whisper(audio_bytes, filename)
 
 
 def transcribe_groq_whisper(audio_bytes: bytes, filename: str = "audio.wav") -> Optional[str]:
@@ -217,7 +320,7 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
     models = ["qwen/qwen3.8-27b"]
     for model_name in models:
         try:
-            client = Groq(api_key=groq_key, timeout=2.0, max_retries=0)
+            client = Groq(api_key=groq_key, timeout=1.5, max_retries=0)
             completion = client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -242,7 +345,7 @@ def _call_gemini_fallback(prompt: str) -> Optional[Dict[str, Any]]:
     gemini_key = _get_gemini_key()
     if not gemini_key or genai is None:
         return None
-    models = ["gemini-3.5-flash-lite", "gemma-4-26b-a4b-it", "gemini-2.5-flash"]
+    models = ["gemini-2.5-flash"]
     for model_name in models:
         try:
             client = genai.Client(api_key=gemini_key)
@@ -256,7 +359,7 @@ def _call_gemini_fallback(prompt: str) -> Optional[Dict[str, Any]]:
                 return parsed
         except Exception as e:
             print(f"[LLM Warning] Gemini {model_name} failed: {e}")
-            continue
+            break
     return None
 
 

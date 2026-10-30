@@ -5,7 +5,7 @@ Provides REST and Voice endpoints serving the Two-Screen Console & Report UI.
 import io
 import os
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -31,6 +31,7 @@ from backend.voice_pipeline import (
     generate_opening_disclosure,
     process_turn,
     synthesize_tts_mp3,
+    transcribe_audio_stt,
     transcribe_groq_whisper,
 )
 
@@ -308,13 +309,14 @@ async def tts_endpoint(text: str = Query(..., min_length=1), lang: str = Query("
     audio_bytes = await synthesize_tts_mp3(text, lang)
     if not audio_bytes:
         raise HTTPException(status_code=500, detail="TTS synthesis unavailable")
-    return Response(content=audio_bytes, media_type="audio/mpeg")
+    media_type = "audio/wav" if audio_bytes.startswith(b"RIFF") else "audio/mpeg"
+    return Response(content=audio_bytes, media_type=media_type)
 
 
 @app.post("/api/stt")
-async def stt_endpoint(file: UploadFile = File(...)) -> Dict[str, Any]:
+async def stt_endpoint(file: UploadFile = File(...), lang: str = Form("Hindi")) -> Dict[str, Any]:
     audio_bytes = await file.read()
-    transcription = transcribe_groq_whisper(audio_bytes, file.filename or "audio.wav")
+    transcription = transcribe_audio_stt(audio_bytes, file.filename or "audio.wav", lang)
     if transcription is None:
         return {"status": "fallback", "text": "", "message": "STT fallback: using browser SpeechRecognition"}
     return {"status": "success", "text": transcription}
