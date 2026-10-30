@@ -3,6 +3,7 @@
 Provides REST and Voice endpoints serving the Two-Screen Console & Report UI.
 """
 import io
+import json
 import os
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
