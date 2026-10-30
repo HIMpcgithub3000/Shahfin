@@ -1536,6 +1536,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
             : `Pardon me, am I speaking with ${customer.name}?`;
         }
       }
+      }
 
       if (!guardrailCheck) {
         guardrailCheck = verifyAndSanitizeBotReply(botReply, detectedLang, customer.name);
@@ -1659,7 +1660,6 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           );
           return;
         }
-      }
       }
 
       const now = new Date();
@@ -2346,36 +2346,43 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       });
 
       document.querySelectorAll('.quick-reply-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const reply = btn.getAttribute('data-quick-reply');
+          if (!reply) return;
           if (!activeCall || activeCall.ended) {
-            startCallForCustomer(selectedCustomerId);
+            await startCallForCustomer(selectedCustomerId);
+            setTimeout(() => processBorrowerTurn(reply), 350);
+          } else {
+            processBorrowerTurn(reply);
           }
-          setTimeout(() => processBorrowerTurn(reply), 120);
         });
       });
 
-      document.getElementById('btnCorrectBirthYear').addEventListener('click', () => {
+      document.getElementById('btnCorrectBirthYear').addEventListener('click', async () => {
         const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
-        if (!activeCall || activeCall.ended) {
-          startCallForCustomer(c.customer_id);
-        }
         const text = c.language === 'Hindi'
           ? `मेरा जन्म का साल ${c.birth_year} है।`
           : `My birth year is ${c.birth_year}.`;
-        setTimeout(() => processBorrowerTurn(text), 120);
+        if (!activeCall || activeCall.ended) {
+          await startCallForCustomer(c.customer_id);
+          setTimeout(() => processBorrowerTurn(text), 350);
+        } else {
+          processBorrowerTurn(text);
+        }
       });
 
-      document.getElementById('borrowerInputForm').addEventListener('submit', (e) => {
+      document.getElementById('borrowerInputForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const input = document.getElementById('borrowerTextInput');
         const val = input.value.trim();
         if (!val) return;
-        if (!activeCall || activeCall.ended) {
-          startCallForCustomer(selectedCustomerId);
-        }
         input.value = '';
-        setTimeout(() => processBorrowerTurn(val), 80);
+        if (!activeCall || activeCall.ended) {
+          await startCallForCustomer(selectedCustomerId);
+          setTimeout(() => processBorrowerTurn(val), 350);
+        } else {
+          processBorrowerTurn(val);
+        }
       });
 
       document.getElementById('micButton').addEventListener('click', () => {
