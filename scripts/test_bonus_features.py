@@ -53,8 +53,7 @@ def test_bonus_1_sarvam_fallback_and_marathi_flow():
 
 def test_bonus_2_mid_call_language_switching():
     """Bonus 2: Seamlessly switch language mid-dialogue upon borrower request."""
-    customer = get_customer("C001")
-    assert customer is not None  # Rahul Sharma (Hindi by default)
+    customer = get_customer("C001")  # Rahul Sharma (Hindi by default)
     assert customer is not None
 
     # 1. Detect explicit language switch intent

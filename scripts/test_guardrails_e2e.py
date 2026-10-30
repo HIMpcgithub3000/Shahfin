@@ -355,12 +355,14 @@ def test_compliance_rule_6_dnc_trigger_and_flag_update():
     assert is_dnc_request("डू नॉट कॉल, दोबारा फोन मत करना।") is True
 
     customer = get_customer("C001")
+    assert customer is not None
     res = process_turn(customer, "Please stop calling this number, put me on DNC.", "AWAITING_NAME_CONFIRMATION", "English")
     assert res["mark_do_not_call"] is True
 
     # Simulate turn endpoint updating DNC
     update_customer_dnc("C001", 1)
     updated = get_customer("C001")
+    assert updated is not None
     assert updated["do_not_call"] == 1
 
     # Preflight should now refuse C001
@@ -437,6 +439,7 @@ def test_backend_owned_call_lifecycle_and_interrupted_call():
 def test_hindi_interrogative_collision_fixed():
     """Problem 2 Fix: Saying 'आप कौन हो?' must NOT be treated as affirmative Marathi 'हो'."""
     customer = get_customer("C001")
+    assert customer is not None
     res = process_turn(customer, "आप कौन हो? किसने फोन किया है?", "AWAITING_NAME_CONFIRMATION", "Hindi")
     # Must remain at AWAITING_NAME_CONFIRMATION and not jump to birth year
     assert res["stage"] == "AWAITING_NAME_CONFIRMATION"
