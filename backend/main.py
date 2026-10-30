@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.compliance_gate import check_pre_call_gate
@@ -57,6 +58,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+AUDIO_DEMOS_DIR = os.path.join(BASE_DIR, "audio_demos")
+if os.path.exists(AUDIO_DEMOS_DIR):
+    app.mount("/audio_demos", StaticFiles(directory=AUDIO_DEMOS_DIR), name="audio_demos")
 
 
 class PreflightRequest(BaseModel):
