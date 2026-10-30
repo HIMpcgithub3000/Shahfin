@@ -6,13 +6,14 @@ import io
 import json
 import os
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.compliance_gate import check_pre_call_gate
+from backend.twilio_stream import handle_twilio_media_stream
 from backend.db import (
     clear_calls,
     create_initial_call_record,
@@ -391,29 +392,43 @@ def initiate_real_phone_call(req: TelephonyOutboundRequest) -> Dict[str, Any]:
         return {"status": "error", "detail": str(e), "customer": customer}
 
 
+@app.websocket("/api/telephony/twilio/stream/{call_id}")
+async def twilio_media_stream_ws(websocket: WebSocket, call_id: str):
+    """Twilio Media Streams: Bidirectional 8kHz mu-law audio over WebSocket (PRD Module 4)."""
+    await handle_twilio_media_stream(websocket, call_id)
+
+
 @app.api_route("/api/telephony/twilio/voice", methods=["GET", "POST"])
 def twilio_voice_webhook(
+    request: Request,
     customer_id: str = Query("C001"),
     lang: str = Query("Hindi"),
     call_id: Optional[str] = Query(None),
 ) -> Response:
-    """Twilio Webhook: Initial TwiML when borrower answers the phone."""
-    customer = get_customer(customer_id)
-    cust_name = customer["name"] if customer else "Customer"
-    opening = generate_opening_disclosure(cust_name, lang)
+    """Twilio Webhook: Initial TwiML connecting Twilio media to our WebSocket bridge (PRD Module 3)."""
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
+    is_secure = "https" in (request.headers.get("x-forwarded-proto") or "") or "loca.lt" in host or "ngrok" in host
+    ws_proto = "wss" if is_secure else "ws"
+    cid = call_id or get_next_call_id()
+    stream_ws_url = f"{ws_proto}://{host}/api/telephony/twilio/stream/{cid}"
 
-    twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
+    # Return TwiML with bidirectional Media Stream as specified in PRD Section 4 (Module 3)
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="speech" action="/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={call_id or ''}" language="{twiml_lang}" speechTimeout="auto">
-        <Say language="{twiml_lang}">{opening}</Say>
-    </Gather>
+    <Connect>
+        <Stream url="{stream_ws_url}">
+            <Parameter name="call_id" value="{cid}" />
+            <Parameter name="customer_id" value="{customer_id}" />
+            <Parameter name="language" value="{lang}" />
+        </Stream>
+    </Connect>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
 
 @app.api_route("/api/telephony/twilio/turn", methods=["GET", "POST"])
 def twilio_turn_webhook(
+    request: Request,
     SpeechResult: Optional[str] = Form(None),
     customer_id: str = Query("C001"),
     lang: str = Query("Hindi"),
@@ -422,24 +437,46 @@ def twilio_turn_webhook(
 ) -> Response:
     """Twilio Webhook: Turn processing from SpeechResult."""
     customer = get_customer(customer_id)
-    speech_text = SpeechResult or ""
+    speech_text = (SpeechResult or "").strip()
+    print(f"\n[Twilio Speech Received] Borrower said: '{speech_text}' | Customer: {customer_id} | Stage: {stage} | Lang: {lang}")
+
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
+    proto = request.headers.get("x-forwarded-proto") or ("https" if "loca.lt" in host or "ngrok" in host else "http")
+    base = f"{proto}://{host}"
+
+    if not speech_text:
+        twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
+        action_url = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={call_id or ''}&amp;stage={stage}"
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say language="{twiml_lang}">क्षमा करें, मुझे आपकी आवाज़ नहीं सुनाई दी।</Say>
+    <Gather input="speech" action="{action_url}" method="POST" language="{twiml_lang}" timeout="7" speechTimeout="auto"/>
+</Response>"""
+        return Response(content=twiml, media_type="application/xml")
+
     res = process_turn(customer, speech_text, stage, lang)
     bot_reply = res.get("bot_reply", "")
     new_stage = res.get("stage", "COMPLETED")
-    twiml_lang = "hi-IN" if res.get("detected_language") == "Hindi" else ("mr-IN" if res.get("detected_language") == "Marathi" else "en-IN")
+    detected_lang = res.get("detected_language") or lang
+    twiml_lang = "hi-IN" if detected_lang == "Hindi" else ("mr-IN" if detected_lang == "Marathi" else "en-IN")
+
+    next_action = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={detected_lang}&amp;call_id={call_id or ''}&amp;stage={new_stage}"
 
     if new_stage == "COMPLETED" or res.get("outcome"):
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say language="{twiml_lang}">{bot_reply}</Say>
+    <Pause length="1"/>
     <Hangup/>
 </Response>"""
     else:
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="speech" action="/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={res.get('detected_language', lang)}&amp;call_id={call_id or ''}&amp;stage={new_stage}" language="{twiml_lang}" speechTimeout="auto">
+    <Gather input="speech" action="{next_action}" method="POST" language="{twiml_lang}" timeout="7" speechTimeout="auto">
         <Say language="{twiml_lang}">{bot_reply}</Say>
     </Gather>
+    <Say language="{twiml_lang}">कृपया अपना उत्तर बताएं।</Say>
+    <Gather input="speech" action="{next_action}" method="POST" language="{twiml_lang}" timeout="7" speechTimeout="auto"/>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
