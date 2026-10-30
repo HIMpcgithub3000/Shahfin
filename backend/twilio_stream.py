@@ -17,13 +17,7 @@ import wave
 from typing import Any, Dict, List, Optional
 from fastapi import WebSocket, WebSocketDisconnect
 
-try:
-    import audioop_lts as audioop
-except ImportError:
-    try:
-        import audioop  # type: ignore[import-not-found]
-    except ImportError:
-        audioop = None  # type: ignore[assignment]
+import audioop
 
 from backend.db import finalize_call_record, get_customer, update_call_turn
 from backend.voice_pipeline import (
