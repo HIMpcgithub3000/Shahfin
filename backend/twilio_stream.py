@@ -18,9 +18,12 @@ from typing import Any, Dict, List, Optional
 from fastapi import WebSocket, WebSocketDisconnect
 
 try:
-    import audioop
-except ImportError:
     import audioop_lts as audioop
+except ImportError:
+    try:
+        import audioop  # type: ignore[import-not-found]
+    except ImportError:
+        audioop = None  # type: ignore[assignment]
 
 from backend.db import finalize_call_record, get_customer, update_call_turn
 from backend.voice_pipeline import (
@@ -188,7 +191,7 @@ async def handle_twilio_media_stream(websocket: WebSocket, call_id: str) -> None
                                 try:
                                     # 1. Speech-to-Text
                                     wav_bytes = mulaw_to_wav(mulaw_audio)
-                                    spoken_text = transcribe_audio_stt(wav_bytes, language=cur_lang)
+                                    spoken_text = transcribe_audio_stt(wav_bytes, filename="speech.wav", language=cur_lang)
                                     if not spoken_text or not spoken_text.strip():
                                         print("[Twilio WSS] STT silence / unrecognised speech")
                                         turn_in_progress = False
@@ -198,7 +201,13 @@ async def handle_twilio_media_stream(websocket: WebSocket, call_id: str) -> None
                                     transcript_history.append({"speaker": "Borrower", "text": spoken_text, "lang": cur_lang})
 
                                     # 2. Conversational Turn & Guardrail Decision
-                                    cust_record = customer or get_customer(customer_id)
+                                    cust_record = customer or get_customer(customer_id) or {
+                                        "customer_id": customer_id,
+                                        "name": "Customer",
+                                        "language": cur_lang,
+                                        "birth_year": 1990,
+                                        "do_not_call": 0,
+                                    }
                                     res = process_turn(cust_record, spoken_text, cur_stage, cur_lang)
                                     bot_reply = res.get("bot_reply", "")
                                     new_stage = res.get("stage", "COMPLETED")
@@ -213,11 +222,13 @@ async def handle_twilio_media_stream(websocket: WebSocket, call_id: str) -> None
                                     # Update turn record in DB
                                     update_call_turn(
                                         call_id=call_id,
-                                        stage=new_stage,
+                                        borrower_text=spoken_text,
+                                        bot_reply=bot_reply,
                                         language=detected_lang,
-                                        turn_data={"speaker": "Borrower", "text": spoken_text},
-                                        bot_turn_data={"speaker": "Bot", "text": bot_reply},
                                         outcome=outcome,
+                                        callback_time=res.get("callback_time"),
+                                        mark_do_not_call=res.get("mark_do_not_call", False),
+                                        customer_id=customer_id,
                                     )
 
                                     # 3. Synthesize & Stream Bot Response
@@ -259,3 +270,4 @@ async def handle_twilio_media_stream(websocket: WebSocket, call_id: str) -> None
     finally:
         bot_speaking["active"] = False
         print(f"[Twilio WSS] Session closed for {call_id}")
+

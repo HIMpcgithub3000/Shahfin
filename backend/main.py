@@ -432,7 +432,13 @@ def twilio_voice_webhook(
         return Response(content=twiml, media_type="application/xml")
 
     # Interactive Speech Recognition TwiML (ultra-reliable over localtunnel / HTTP webhooks)
-    customer = get_customer(customer_id)
+    customer = get_customer(customer_id) or {
+        "customer_id": customer_id,
+        "name": "Customer",
+        "language": lang,
+        "birth_year": 1990,
+        "do_not_call": 0,
+    }
     cust_name = customer["name"] if customer else "Customer"
     opening = generate_opening_disclosure(cust_name, lang)
     twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
@@ -459,7 +465,13 @@ def twilio_turn_webhook(
     stage: str = Query("AWAITING_NAME_CONFIRMATION"),
 ) -> Response:
     """Twilio Webhook: Turn processing from SpeechResult."""
-    customer = get_customer(customer_id)
+    customer = get_customer(customer_id) or {
+        "customer_id": customer_id,
+        "name": "Customer",
+        "language": lang,
+        "birth_year": 1990,
+        "do_not_call": 0,
+    }
     speech_text = (SpeechResult or "").strip()
     print(f"\n[Twilio Speech Received] Borrower said: '{speech_text}' | Customer: {customer_id} | Stage: {stage} | Lang: {lang}")
 

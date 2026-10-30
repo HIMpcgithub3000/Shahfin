@@ -23,20 +23,23 @@ from backend.compliance_gate import (
     verify_and_sanitize_reply,
 )
 
+edge_tts: Any = None
 try:
     import edge_tts
 except ImportError:
-    edge_tts = None
+    pass
 
+Groq: Any = None
 try:
     from groq import Groq
 except ImportError:
-    Groq = None
+    pass
 
+genai: Any = None
 try:
     from google import genai
 except ImportError:
-    genai = None
+    pass
 
 from dotenv import load_dotenv
 
@@ -293,7 +296,7 @@ def synthesize_sarvam_bulbul(text: str, language: str) -> Optional[bytes]:
         "model": tts_model,
     }
     try:
-        import requests
+        import requests  # type: ignore[import-untyped]
         resp = requests.post(url, headers=headers, json=payload, timeout=3.5)
         if resp.status_code == 200:
             data = resp.json()
@@ -324,7 +327,7 @@ def transcribe_sarvam_saaras(audio_bytes: bytes, filename: str = "audio.wav", la
     lang_code = SARVAM_LANG_CODES.get(language, "unknown")
     stt_model = os.getenv("SARVAM_STT_MODEL", "saaras:v3").strip()
     try:
-        import requests
+        import requests  # type: ignore[import-untyped]
         files = {"file": (filename, audio_bytes, "audio/wav")}
         data = {
             "model": stt_model,
@@ -462,7 +465,7 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
                 temperature=0.1,
                 max_tokens=400,
             )
-            content = completion.choices[0].message.content
+            content = completion.choices[0].message.content or "{}"
             parsed = json.loads(content)
             if isinstance(parsed, dict) and "bot_reply" in parsed:
                 return parsed
@@ -485,7 +488,7 @@ def _call_gemini_fallback(prompt: str) -> Optional[Dict[str, Any]]:
                 contents=prompt + "\n\nAnalyze the borrower's input and output valid JSON only.",
                 config={"response_mime_type": "application/json"},
             )
-            parsed = json.loads(response.text)
+            parsed = json.loads(response.text or "{}")
             if isinstance(parsed, dict) and "bot_reply" in parsed:
                 return parsed
         except Exception as e:
