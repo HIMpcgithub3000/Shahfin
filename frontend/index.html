@@ -1385,6 +1385,12 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     function speakBotText(text, lang = 'Hindi') {
       if (!ttsEnabled || !text) return;
 
+      if (fullCallAudioPlayer && !fullCallAudioPlayer.paused) {
+        // Pre-recorded call audio is actively playing, don't overlap individual TTS
+        pulseWaveform(Math.max(2200, text.length * 85));
+        return;
+      }
+
       // Guarantee ONLY ONE AUDIO plays at any given time
       stopAllAudio();
       isBotSpeaking = true;
@@ -1937,7 +1943,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     // =========================================================================
     // 7. CALL LIFECYCLE: START, 15s SILENCE TIMER, MID-CALL STOP, SAVE TO DB
     // =========================================================================
-    async function startCallForCustomer(customerId, isAutoPlay = false) {
+    async function startCallForCustomer(customerId, isAutoPlay = false, forcedCallId = null) {
       clearAutoPlayTimeouts();
       if (activeCall && !activeCall.ended) {
         finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Stopped before starting next call');
@@ -2020,7 +2026,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const openingText = backendOpening || generateOpeningGreeting(customer);
 
       activeCall = {
-        call_id: backendCallId || `CALL-${1000 + calls.length + 1}`,
+        call_id: forcedCallId || backendCallId || `CALL-${1000 + calls.length + 1}`,
         customer_id: customer.customer_id,
         customer_name: customer.name,
         phone: customer.phone,
@@ -2303,11 +2309,21 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
     function autoPlayCustomerScenario(customerId) {
       const scenario = TEST_SCENARIOS[customerId];
-      startCallForCustomer(customerId, true);
-      if (!activeCall || activeCall.ended) return;
-
       if (!scenario) return;
 
+      const customer = customers.find(c => c.customer_id === customerId);
+      const callNo = scenario.call_no || parseInt(customerId.replace(/\D/g, ''), 10) || 1;
+      const callId = `CALL-${1000 + callNo}`;
+      const audioUrl = `/audio_recordings/${callId}.mp3`;
+
+      // 1. Play the authentic recorded call audio
+      playFullCallAudio(audioUrl, `${callId} (${customer ? customer.name : customerId}) · ${scenario.expected_outcome}`);
+
+      // 2. Start the call session with this exact call_id
+      startCallForCustomer(customerId, true, callId);
+      if (!activeCall || activeCall.ended) return;
+
+      // 3. Sequentially step through the borrower's turns
       scenario.steps.forEach((stepText, idx) => {
         const timerId = setTimeout(() => {
           if (!activeCall || activeCall.ended) return;
@@ -2324,7 +2340,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           } else {
             processBorrowerTurn(stepText);
           }
-        }, (idx + 1) * 1800);
+        }, (idx + 1) * 2400);
         autoPlayTimeoutIds.push(timerId);
       });
     }
@@ -2353,7 +2369,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
     function renderCustomerTable() {
       const tbody = document.getElementById('customerTableBody');
-      tbody.innerHTML = customers.map(c => {
+      const displayCustomers = isRealTelephonyMode
+        ? customers
+        : customers.filter(c => /^C0(0[1-9]|10)$/.test(c.customer_id));
+      tbody.innerHTML = displayCustomers.map(c => {
         const isSelected = c.customer_id === selectedCustomerId;
         const dncBadge = c.do_not_call === 1
           ? '<span class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30 font-semibold">DNC</span>'
@@ -2728,7 +2747,12 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         const dialBtn = e.target.closest('[data-dial-customer]');
         if (dialBtn) {
           const cid = dialBtn.getAttribute('data-dial-customer');
-          startCallForCustomer(cid);
+          if (isRealTelephonyMode) {
+            const cust = customers.find(c => c.customer_id === cid);
+            if (cust) executeRealOutboundCall(cust);
+          } else {
+            autoPlayCustomerScenario(cid);
+          }
           return;
         }
         const row = e.target.closest('[data-customer-row]');
@@ -2747,7 +2771,12 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       }
 
       document.getElementById('startCallBtn').addEventListener('click', () => {
-        startCallForCustomer(selectedCustomerId);
+        if (isRealTelephonyMode) {
+          const cust = customers.find(c => c.customer_id === selectedCustomerId);
+          if (cust) executeRealOutboundCall(cust);
+        } else {
+          autoPlayCustomerScenario(selectedCustomerId);
+        }
       });
 
       document.getElementById('dialTwilioBtn').addEventListener('click', async () => {

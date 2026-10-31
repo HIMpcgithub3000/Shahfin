@@ -241,7 +241,7 @@ async def handle_twilio_media_stream(websocket: WebSocket, call_id: str) -> None
                             greeting_lock.unlock_now()
 
                             # Process borrower turn in background task
-                            async def process_borrower_utterance(mulaw_audio: bytes, cur_stage: str, cur_lang: str):
+                            async def process_borrower_utterance(mulaw_audio: bytes, cur_stage: str, cur_lang: str) -> None:
                                 nonlocal stage, language, turn_in_progress, turn_counter
                                 turn_counter += 1
                                 t_turn_start = time.time()

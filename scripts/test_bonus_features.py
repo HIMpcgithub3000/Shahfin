@@ -138,11 +138,11 @@ def test_bonus_4_callback_time_strict_iso_field():
     assert iso1 == "18:30:00"
 
     disp2, iso2 = extract_callback_time_and_iso("दुपारी २ वाजता संपर्क करा")
-    assert "2:00 PM" in disp2
+    assert disp2 is not None and "2:00 PM" in disp2
     assert iso2 == "14:00:00"
 
     disp3, iso3 = extract_callback_time_and_iso("Please call back tomorrow at 11:00 AM")
-    assert "11:00 AM" in disp3
+    assert disp3 is not None and "11:00 AM" in disp3
     assert iso3 == "11:00:00"
 
     # 2. Test turn processing extracts callback_time_iso

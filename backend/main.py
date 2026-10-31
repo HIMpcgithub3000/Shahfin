@@ -82,6 +82,10 @@ AUDIO_DEMOS_DIR = os.path.join(BASE_DIR, "audio_demos")
 if os.path.exists(AUDIO_DEMOS_DIR):
     app.mount("/audio_demos", StaticFiles(directory=AUDIO_DEMOS_DIR), name="audio_demos")
 
+RECORDINGS_MOUNT_DIR = os.path.join(BASE_DIR, "audio_recordings")
+if os.path.exists(RECORDINGS_MOUNT_DIR):
+    app.mount("/audio_recordings", StaticFiles(directory=RECORDINGS_MOUNT_DIR), name="audio_recordings")
+
 
 class PreflightRequest(BaseModel):
     customer_id: str

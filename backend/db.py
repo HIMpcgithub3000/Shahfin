@@ -9,7 +9,7 @@ import json
 import os
 import sqlite3
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 try:
     import psycopg2
@@ -141,12 +141,13 @@ def init_db_and_seed_customers(csv_path: str) -> None:
     if is_postgres(conn):
         cur.execute(POSTGRES_DDL)
     else:
-        cur.executescript(SQLITE_DDL)
+        cast(Any, conn).executescript(SQLITE_DDL)
     conn.commit()
     _ensure_schema_columns(cur, conn)
 
     cur.execute("SELECT COUNT(*) FROM Customer")
-    count = cur.fetchone()[0]
+    row = cur.fetchone()
+    count = row[0] if row is not None else 0
     if count == 0 and os.path.exists(csv_path):
         _seed_customers_from_file(cur, conn, csv_path)
         conn.commit()
@@ -465,7 +466,7 @@ def get_call(call_id: str) -> Optional[Dict[str, Any]]:
     if not row:
         conn.close()
         return None
-    cols = [d[0] for d in cur.description]
+    cols = [d[0] for d in (cur.description or [])]
     call_dict = dict(zip(cols, row))
     conn.close()
     return call_dict
