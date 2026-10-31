@@ -369,7 +369,7 @@ def initiate_real_phone_call(req: TelephonyOutboundRequest) -> Dict[str, Any]:
         create_initial_call_record(call_id, req.customer_id, req.language, opening_text)
 
         # Use public base_url or active public tunnel for bidirectional voicebot conversation:
-        tunnel_url = "https://lazy-turkeys-bathe.loca.lt"
+        tunnel_url = "https://quiet-jokes-dress.loca.lt"
         if base_url.startswith("https://") or (base_url.startswith("http://") and "localhost" not in base_url and "127.0.0.1" not in base_url and " " not in base_url):
             effective_base = base_url
         else:
