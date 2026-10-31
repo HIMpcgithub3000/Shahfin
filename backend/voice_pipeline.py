@@ -801,7 +801,13 @@ def process_turn(
     # Code-Level Safety Guardrail Enforcement (Layer 1)
     detected_lang = parsed.get("detected_language") or detect_reply_language(input_text, language)
     raw_reply = parsed.get("bot_reply", "")
-    sanitized = verify_and_sanitize_reply(raw_reply, detected_lang, customer_name)
+
+    # Pipeline DAG Stage 11 (Meta-Narration Filter) & Stage 12 (TTS Text Sanitizer)
+    from backend.pipeline_processors import MetaNarrationFilter, TTSTextSanitizer
+    filtered_reply = MetaNarrationFilter.filter_text(raw_reply)
+    clean_reply = TTSTextSanitizer.sanitize(filtered_reply, detected_lang)
+
+    sanitized = verify_and_sanitize_reply(clean_reply, detected_lang, customer_name)
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     # Simulate realistic network/voice pipeline latency baseline while strictly respecting <3000ms SLA
