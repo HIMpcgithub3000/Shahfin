@@ -1517,8 +1517,22 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       return `Hello, I am an automated assistant calling from Shaha Finlease. This call is recorded for quality and verification purposes. Am I speaking with ${customer.name}?`;
     }
 
-    async function processBorrowerTurn(inputText) {
+    async function processBorrowerTurn(inputText, isAutoScenario = false) {
       if (!activeCall || activeCall.ended) return;
+
+      if (!isAutoScenario) {
+        // User clicked a quick-reply button, typed text, or spoke into mic:
+        // Clear any auto-play timers and stop pre-recorded audio so live LLM takes over!
+        clearAutoPlayTimeouts();
+        if (fullCallAudioPlayer) {
+          try { fullCallAudioPlayer.pause(); fullCallAudioPlayer.currentTime = 0; } catch(e) {}
+          fullCallAudioPlayer = null;
+          const indicator = document.getElementById('fullAudioPlayingIndicator');
+          const stopBtn = document.getElementById('stopFullAudioBtn');
+          if (indicator) indicator.classList.add('hidden');
+          if (stopBtn) stopBtn.classList.add('hidden');
+        }
+      }
 
       turnStartTimestamp = performance.now();
       const t0 = performance.now();
@@ -2338,7 +2352,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
             });
             finalizeActiveCall('Not connected', 'Dropped before reply');
           } else {
-            processBorrowerTurn(stepText);
+            processBorrowerTurn(stepText, true);
           }
         }, (idx + 1) * 2400);
         autoPlayTimeoutIds.push(timerId);
@@ -2858,8 +2872,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         btn.addEventListener('click', async () => {
           const reply = btn.getAttribute('data-quick-reply');
           if (!reply) return;
+          btn.classList.add('ring-2', 'ring-[#B8763D]', 'scale-95');
+          setTimeout(() => btn.classList.remove('ring-2', 'ring-[#B8763D]', 'scale-95'), 200);
           if (!activeCall || activeCall.ended) {
-            await startCallForCustomer(selectedCustomerId);
+            await startCallForCustomer(selectedCustomerId, false);
             setTimeout(() => processBorrowerTurn(reply), 350);
           } else {
             processBorrowerTurn(reply);
@@ -2868,13 +2884,16 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       });
 
       document.getElementById('btnCorrectBirthYear').addEventListener('click', async () => {
+        const btn = document.getElementById('btnCorrectBirthYear');
+        btn.classList.add('ring-2', 'ring-[#B8763D]', 'scale-95');
+        setTimeout(() => btn.classList.remove('ring-2', 'ring-[#B8763D]', 'scale-95'), 200);
         const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
         const year = DEMO_FIXTURE_YEARS[c.customer_id] || 1985;
         const text = c.language === 'Hindi'
           ? `मेरा जन्म का साल ${year} है।`
           : `My birth year is ${year}.`;
         if (!activeCall || activeCall.ended) {
-          await startCallForCustomer(c.customer_id);
+          await startCallForCustomer(c.customer_id, false);
           setTimeout(() => processBorrowerTurn(text), 350);
         } else {
           processBorrowerTurn(text);
