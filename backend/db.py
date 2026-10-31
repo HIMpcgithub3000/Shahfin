@@ -230,6 +230,91 @@ def update_customer_dnc(customer_id: str, do_not_call: int = 1) -> None:
     conn.close()
 
 
+def upsert_customer(
+    customer_id: str,
+    name: str,
+    phone: str,
+    birth_year: int = 1990,
+    language: str = "Hindi",
+    do_not_call: int = 0,
+) -> Dict[str, Any]:
+    """Inserts or updates a customer/lead in dbo.Customer."""
+    conn = get_connection()
+    cur = conn.cursor()
+    execute_sql(cur, conn, "SELECT customer_id FROM Customer WHERE customer_id = ?", (customer_id,))
+    if cur.fetchone():
+        execute_sql(
+            cur,
+            conn,
+            "UPDATE Customer SET name = ?, phone = ?, birth_year = ?, language = ?, do_not_call = ? WHERE customer_id = ?",
+            (name, phone, birth_year, language, do_not_call, customer_id),
+        )
+    else:
+        execute_sql(
+            cur,
+            conn,
+            "INSERT INTO Customer (customer_id, name, phone, birth_year, language, do_not_call) VALUES (?, ?, ?, ?, ?, ?)",
+            (customer_id, name, phone, birth_year, language, do_not_call),
+        )
+    conn.commit()
+    conn.close()
+    return {
+        "customer_id": customer_id,
+        "name": name,
+        "phone": phone,
+        "birth_year": birth_year,
+        "language": language,
+        "do_not_call": do_not_call,
+    }
+
+
+def get_real_leads() -> List[Dict[str, Any]]:
+    """Returns all real telephony leads (excluding C001-C010). Ensures Himanshu Sharma is present by default."""
+    conn = get_connection()
+    cur = conn.cursor()
+    execute_sql(
+        cur,
+        conn,
+        "SELECT customer_id, name, phone, birth_year, language, do_not_call "
+        "FROM Customer "
+        "WHERE customer_id NOT IN ('C001','C002','C003','C004','C005','C006','C007','C008','C009','C010') "
+        "ORDER BY customer_id",
+    )
+    rows = cur.fetchall()
+    leads = [
+        {
+            "customer_id": r[0],
+            "name": r[1],
+            "phone": r[2],
+            "birth_year": int(r[3]),
+            "language": r[4],
+            "do_not_call": int(bool(r[5])),
+        }
+        for r in rows
+    ]
+    # Ensure default real lead (Himanshu Sharma) is always present
+    has_himanshu = any(l["name"] == "Himanshu Sharma" or l["phone"] == "+916267386284" for l in leads)
+    if not has_himanshu:
+        himanshu = {
+            "customer_id": "R001",
+            "name": "Himanshu Sharma",
+            "phone": "+916267386284",
+            "birth_year": 2001,
+            "language": "Hindi",
+            "do_not_call": 0,
+        }
+        execute_sql(
+            cur,
+            conn,
+            "INSERT INTO Customer (customer_id, name, phone, birth_year, language, do_not_call) VALUES (?, ?, ?, ?, ?, ?)",
+            ("R001", "Himanshu Sharma", "+916267386284", 2001, "Hindi", 0),
+        )
+        conn.commit()
+        leads.insert(0, himanshu)
+    conn.close()
+    return leads
+
+
 def get_next_call_id() -> str:
     """Generates next sequential Call ID (e.g. CALL-1001, CALL-1002)."""
     conn = get_connection()

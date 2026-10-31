@@ -23,6 +23,7 @@ from backend.db import (
     get_connection,
     get_customer,
     get_next_call_id,
+    get_real_leads,
     get_report_stats,
     init_db_and_seed_customers,
     reset_customers,
@@ -30,6 +31,7 @@ from backend.db import (
     seed_test_calls,
     update_call_turn,
     update_customer_dnc,
+    upsert_customer,
 )
 from backend.voice_pipeline import (
     RECORDINGS_DIR,
@@ -186,6 +188,72 @@ def reset_all_customers() -> Dict[str, Any]:
             for c in get_all_customers()
         ],
     }
+
+
+class LeadItem(BaseModel):
+    name: str
+    phone: str
+    birth_year: Optional[int] = 1990
+    language: Optional[str] = "Hindi"
+    do_not_call: Optional[int] = 0
+
+
+class ImportLeadsRequest(BaseModel):
+    leads: List[LeadItem]
+
+
+@app.get("/api/leads/real")
+def get_real_telephony_leads() -> List[Dict[str, Any]]:
+    """Returns all real telephony leads (excluding dummy test C001-C010). Ensures Himanshu Sharma is present."""
+    return get_real_leads()
+
+
+@app.post("/api/leads/add")
+def add_real_lead(lead: LeadItem) -> Dict[str, Any]:
+    """Adds a single real lead for outbound calling."""
+    phone = lead.phone.strip()
+    if not phone.startswith("+"):
+        if len(phone) == 10:
+            phone = f"+91{phone}"
+        else:
+            phone = f"+{phone}"
+    existing = get_real_leads()
+    next_id = f"R{len(existing) + 1:03d}"
+    created = upsert_customer(
+        customer_id=next_id,
+        name=lead.name.strip(),
+        phone=phone,
+        birth_year=lead.birth_year or 1990,
+        language=lead.language or "Hindi",
+        do_not_call=lead.do_not_call or 0,
+    )
+    return {"status": "success", "lead": created}
+
+
+@app.post("/api/leads/import")
+def import_real_leads(req: ImportLeadsRequest) -> Dict[str, Any]:
+    """Imports a list of real customer leads from CSV or JSON to the database."""
+    existing = get_real_leads()
+    count_before = len(existing)
+    saved = []
+    for idx, item in enumerate(req.leads):
+        phone = item.phone.strip()
+        if not phone.startswith("+"):
+            if len(phone) == 10:
+                phone = f"+91{phone}"
+            else:
+                phone = f"+{phone}"
+        lead_id = f"R{count_before + idx + 1:03d}"
+        res = upsert_customer(
+            customer_id=lead_id,
+            name=item.name.strip(),
+            phone=phone,
+            birth_year=item.birth_year or 1990,
+            language=item.language or "Hindi",
+            do_not_call=item.do_not_call or 0,
+        )
+        saved.append(res)
+    return {"status": "success", "imported_count": len(saved), "leads": get_real_leads()}
 
 
 @app.post("/api/calls/preflight")

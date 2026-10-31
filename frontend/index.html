@@ -314,17 +314,20 @@
           <div class="lg:col-span-5 flex flex-col glass-card overflow-hidden">
             <div class="p-4 sm:p-5 border-b border-[#6B4423]/10 flex items-center justify-between gap-2 bg-[#F7EFE2]/60">
               <div>
-                <div class="eyebrow">Feature #1 · Customer List</div>
+                <div class="eyebrow" id="customerListEyebrow">Feature #1 · Customer List</div>
                 <h2 class="font-display font-semibold text-lg text-[#3D2817] flex items-center gap-2 mt-0.5">
-                  <span>Customers (`customers.csv`)</span>
-                  <span class="mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] font-sans">10</span>
+                  <span id="customerListTitle">Customers (`customers.csv`)</span>
+                  <span id="customerListCountBadge" class="mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] font-sans">10</span>
                 </h2>
               </div>
-              <div class="flex items-center gap-1.5">
-                <label for="csvUploadInput" class="cursor-pointer text-xs px-3 py-1.5 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 font-medium transition">
+              <div class="flex items-center gap-1.5" id="customerListActions">
+                <label for="csvUploadInput" id="csvUploadLabel" class="cursor-pointer text-xs px-3 py-1.5 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 font-medium transition flex items-center gap-1">
                   Upload CSV
                 </label>
                 <input id="csvUploadInput" type="file" accept=".csv" class="hidden" />
+                <button id="addLeadBtn" type="button" class="text-xs px-2.5 py-1.5 rounded-full bg-[#5D8C3E] hover:bg-[#4d7533] text-white font-semibold transition hidden" title="Add a custom phone number / lead">
+                  + Add Lead
+                </button>
                 <button id="resetCustomersBtn" type="button" class="text-xs px-3 py-1.5 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#6B5541] border border-[#6B4423]/20 font-medium transition" title="Reset customer list and DNC flags">
                   Reset
                 </button>
@@ -349,8 +352,8 @@
               </table>
             </div>
 
-            <!-- Selected Customer Test Persona Runner -->
-            <div class="p-4 bg-[#F7EFE2]/80 border-t border-[#6B4423]/12 space-y-2">
+            <!-- Selected Customer Test Persona Runner (Visible ONLY in Test Mode) -->
+            <div id="testPersonaCard" class="p-4 bg-[#F7EFE2]/80 border-t border-[#6B4423]/12 space-y-2">
               <div class="flex items-center justify-between gap-2">
                 <span class="text-[11px] font-semibold uppercase tracking-wider text-[#B8763D]">Test Persona (`test_calls.csv`)</span>
                 <span id="selectedTestExpectedBadge" class="mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] font-medium">Expected: Right customer</span>
@@ -364,6 +367,28 @@
                 </button>
                 <button id="runAll10TestsBtn" type="button" class="py-2 px-3 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 text-xs font-medium transition">
                   ⚡ Reload All 10 `test_calls.csv`
+                </button>
+              </div>
+            </div>
+
+            <!-- Real Telephony Info Card (Visible ONLY in Real Mode) -->
+            <div id="realTelephonyInfoCard" class="p-4 bg-[#5D8C3E]/10 border-t border-[#5D8C3E]/20 space-y-2.5 hidden">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-[#5D8C3E] flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-[#5D8C3E] animate-pulse"></span>
+                  Live Twilio Telephony Outbound Active
+                </span>
+                <span class="mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#5D8C3E]/20 text-[#5D8C3E] font-semibold">Ready to Dial</span>
+              </div>
+              <p class="text-xs text-[#3D2817] leading-relaxed">
+                Calls placed in this mode ring the recipient's phone via Twilio carrier PSTN. Default target: <strong>Himanshu Sharma (<span class="mono font-semibold text-[#5D8C3E]">+916267386284</span>)</strong>.
+              </p>
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <button id="callHimanshuQuickBtn" type="button" class="flex-1 py-2 px-3.5 rounded-full bg-[#5D8C3E] hover:bg-[#4d7533] text-white text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5">
+                  <span>📱 Call Himanshu Sharma (+916267386284)</span>
+                </button>
+                <button id="downloadSampleCsvBtn" type="button" class="py-2 px-3 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 text-xs font-medium transition" title="Download sample CSV template for importing real leads">
+                  📄 Sample CSV
                 </button>
               </div>
             </div>
@@ -1176,7 +1201,35 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     // =========================================================================
     // 2. APPLICATION STATE
     // =========================================================================
-    let customers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
+    let testCustomers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
+    let realLeads = [
+      {
+        customer_id: 'R001',
+        name: 'Himanshu Sharma',
+        phone: '+916267386284',
+        birth_year: 2001,
+        language: 'Hindi',
+        do_not_call: 0
+      }
+    ];
+    let customers = testCustomers;
+
+    async function fetchRealLeadsFromBackend() {
+      try {
+        const res = await fetch('/api/leads/real');
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            realLeads = list;
+            if (isRealTelephonyMode) {
+              customers = realLeads;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Real leads fetch error:', err);
+      }
+    }
     let calls = JSON.parse(JSON.stringify(PRELOADED_CALLS));
     let selectedCustomerId = 'C001';
     let selectedCallDetailId = 'CALL-1001';
@@ -1776,7 +1829,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     // =========================================================================
     let isRealTelephonyMode = false;
 
-    function setTelephonyMode(isReal, showNotification = true) {
+    async function setTelephonyMode(isReal, showNotification = true) {
       isRealTelephonyMode = isReal;
       const toggle = document.getElementById('telephonyModeToggle');
       if (toggle && toggle.checked !== isReal) toggle.checked = isReal;
@@ -1788,7 +1841,24 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const startBtnText = document.getElementById('startCallBtnText');
       const startBtnIcon = document.getElementById('startCallBtnIcon');
 
+      const eyebrow = document.getElementById('customerListEyebrow');
+      const title = document.getElementById('customerListTitle');
+      const csvLabel = document.getElementById('csvUploadLabel');
+      const addLeadBtn = document.getElementById('addLeadBtn');
+      const resetBtn = document.getElementById('resetCustomersBtn');
+      const testPersona = document.getElementById('testPersonaCard');
+      const realTelephony = document.getElementById('realTelephonyInfoCard');
+
       if (isReal) {
+        await fetchRealLeadsFromBackend();
+        customers = realLeads;
+
+        // Select Himanshu Sharma (R001) as default active lead
+        const himanshu = realLeads.find(l => l.name === 'Himanshu Sharma' || l.phone === '+916267386284') || realLeads[0];
+        if (himanshu) {
+          selectedCustomerId = himanshu.customer_id;
+        }
+
         if (container) {
           container.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#5D8C3E]/15 border-2 border-[#5D8C3E] shadow-sm transition-all ring-2 ring-[#5D8C3E]/20';
         }
@@ -1803,10 +1873,25 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         }
         if (startBtnIcon) startBtnIcon.textContent = '📱';
         if (startBtnText) startBtnText.textContent = 'Place Real Phone Call';
+
+        if (eyebrow) eyebrow.textContent = 'Twilio Outbound Telephony · Real Leads';
+        if (title) title.innerHTML = 'Real Leads <span class="text-xs font-normal text-[#5D8C3E]">(Twilio)</span>';
+        if (csvLabel) {
+          csvLabel.innerHTML = '📥 Import Real Calls CSV';
+          csvLabel.className = 'cursor-pointer text-xs px-3 py-1.5 rounded-full bg-[#5D8C3E] hover:bg-[#4d7533] text-white font-semibold transition shadow-sm flex items-center gap-1';
+        }
+        if (addLeadBtn) addLeadBtn.classList.remove('hidden');
+        if (resetBtn) resetBtn.classList.add('hidden');
+        if (testPersona) testPersona.classList.add('hidden');
+        if (realTelephony) realTelephony.classList.remove('hidden');
+
         if (showNotification) {
-          showToast('Real Telephony Mode Active', 'Dialing any customer will now place a real outbound phone call via Twilio to their actual phone number.', 'emerald');
+          showToast('Real Telephony Mode Active', 'Now showing real leads (Himanshu Sharma +916267386284). You can import more numbers via CSV.', 'emerald');
         }
       } else {
+        customers = testCustomers;
+        selectedCustomerId = 'C001';
+
         if (container) {
           container.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F7EFE2] border border-[#6B4423]/20 shadow-sm transition-all';
         }
@@ -1821,12 +1906,25 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         }
         if (startBtnIcon) startBtnIcon.textContent = '📞';
         if (startBtnText) startBtnText.textContent = 'Dial Selected Customer';
+
+        if (eyebrow) eyebrow.textContent = 'Feature #1 · Customer List';
+        if (title) title.textContent = 'Customers (customers.csv)';
+        if (csvLabel) {
+          csvLabel.innerHTML = 'Upload CSV';
+          csvLabel.className = 'cursor-pointer text-xs px-3 py-1.5 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 font-medium transition';
+        }
+        if (addLeadBtn) addLeadBtn.classList.add('hidden');
+        if (resetBtn) resetBtn.classList.remove('hidden');
+        if (testPersona) testPersona.classList.remove('hidden');
+        if (realTelephony) realTelephony.classList.add('hidden');
+
         if (showNotification) {
-          showToast('Test Calls Mode Active', 'Dialing will execute pre-defined simulation scripts & browser audio.', 'amber');
+          showToast('Test Calls Mode Active', 'Loaded original 10 test persona customers (C001–C010). Dialing plays recorded audio.', 'amber');
         }
       }
 
       renderCustomerTable();
+      updateSelectedCustomerHeader();
     }
 
     async function executeRealOutboundCall(customer) {
@@ -1963,7 +2061,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Stopped before starting next call');
       }
 
-      const customer = customers.find(c => c.customer_id === customerId);
+      const activeList = isRealTelephonyMode ? realLeads : testCustomers;
+      const customer = activeList.find(c => c.customer_id === customerId) || activeList[0];
       if (!customer) return;
 
       selectedCustomerId = customerId;
@@ -2295,16 +2394,20 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
     async function hydrateFromBackend() {
       try {
+        await fetchRealLeadsFromBackend();
         const res = await fetch('/api/customers');
         if (res.ok) {
           const list = await res.json();
           if (Array.isArray(list) && list.length > 0) {
-            customers = list.map(c => ({
+            testCustomers = list.map(c => ({
               ...c,
               birth_year: c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || 1985
             }));
-            renderCustomerTable();
-            updateSelectedCustomerHeader();
+            if (!isRealTelephonyMode) {
+              customers = testCustomers;
+              renderCustomerTable();
+              updateSelectedCustomerHeader();
+            }
           }
         }
       } catch (err) {
@@ -2383,21 +2486,22 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
     function renderCustomerTable() {
       const tbody = document.getElementById('customerTableBody');
-      const displayCustomers = isRealTelephonyMode
-        ? customers
-        : customers.filter(c => /^C0(0[1-9]|10)$/.test(c.customer_id));
+      const displayCustomers = isRealTelephonyMode ? realLeads : testCustomers;
+      const countBadge = document.getElementById('customerListCountBadge');
+      if (countBadge) countBadge.textContent = String(displayCustomers.length);
+
       tbody.innerHTML = displayCustomers.map(c => {
         const isSelected = c.customer_id === selectedCustomerId;
         const dncBadge = c.do_not_call === 1
           ? '<span class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30 font-semibold">DNC</span>'
           : '';
-        const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || '—';
+        const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || (isRealTelephonyMode ? 2001 : 1985);
         return `
           <tr data-customer-row="${c.customer_id}" class="cursor-pointer transition ${isSelected ? 'bg-[#EADBC0]/55 border-l-4 border-l-[#3D2817]' : 'hover:bg-[#F7EFE2]'}">
             <td class="py-2.5 px-3 font-medium text-[#3D2817]">
               <span class="mono text-[#B8763D] font-semibold mr-1">${c.customer_id}</span> ${c.name} ${dncBadge}
             </td>
-            <td class="py-2.5 px-2 mono text-[#6B5541]">${c.phone}</td>
+            <td class="py-2.5 px-2 mono text-[#6B5541] font-semibold">${c.phone}</td>
             <td class="py-2.5 px-2 mono text-[#3D2817] font-medium">${yr}</td>
             <td class="py-2.5 px-2">
               <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.language === 'Hindi' ? 'bg-[#D4A056]/20 text-[#6B4423]' : 'bg-[#4B8FB8]/15 text-[#4B8FB8]'}">${c.language}</span>
@@ -2413,9 +2517,13 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     }
 
     function updateSelectedCustomerHeader() {
-      const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
-      if (!c) return;
-      const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || 1985;
+      const activeList = isRealTelephonyMode ? realLeads : testCustomers;
+      let c = activeList.find(item => item.customer_id === selectedCustomerId);
+      if (!c) {
+        c = activeList[0] || testCustomers[0];
+        selectedCustomerId = c.customer_id;
+      }
+      const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || (isRealTelephonyMode ? 2001 : 1985);
       document.getElementById('activeCustomerTitle').textContent = `${c.customer_id} · ${c.name}`;
       document.getElementById('activeCustomerMeta').textContent = `${c.phone} · Preferred: ${c.language} · Birth Year: ${yr}`;
       document.getElementById('detectedLangBadge').textContent = c.language === 'Hindi' ? 'Hindi (hi-IN)' : 'English (en-IN)';
@@ -2434,7 +2542,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       }
 
       const sc = TEST_SCENARIOS[c.customer_id];
-      if (sc) {
+      if (sc && !isRealTelephonyMode) {
         document.getElementById('selectedTestExpectedBadge').textContent = `Expected: ${sc.expected_outcome}`;
         document.getElementById('selectedTestScenarioDesc').textContent =
           `Call #${sc.call_no} (${c.customer_id} · ${c.name}): ${sc.tester_plays} (${sc.tester_language}).`;
@@ -2888,7 +2996,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         btn.classList.add('ring-2', 'ring-[#B8763D]', 'scale-95');
         setTimeout(() => btn.classList.remove('ring-2', 'ring-[#B8763D]', 'scale-95'), 200);
         const c = customers.find(item => item.customer_id === selectedCustomerId) || customers[0];
-        const year = DEMO_FIXTURE_YEARS[c.customer_id] || 1985;
+        const year = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || (isRealTelephonyMode ? 2001 : 1985);
         const text = c.language === 'Hindi'
           ? `मेरा जन्म का साल ${year} है।`
           : `My birth year is ${year}.`;
@@ -3052,41 +3160,179 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         try {
           await fetch('/api/customers/reset', { method: 'POST' });
         } catch (e) {}
-        customers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
+        testCustomers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
+        customers = testCustomers;
         renderCustomerTable();
         updateSelectedCustomerHeader();
         showToast('Customers Reset', 'Reloaded 10 dummy customers from customers.csv with DNC = 0.', 'emerald');
+      });
+
+      document.getElementById('addLeadBtn').addEventListener('click', async () => {
+        const name = prompt('👤 Add Real Lead\nEnter full name:', 'Rohit Verma');
+        if (!name || !name.trim()) return;
+
+        const phone = prompt(`📱 Enter phone number for ${name} (e.g. +916267386284 or 10-digit number):`, '+91');
+        if (!phone || !phone.trim() || phone.trim() === '+91') return;
+
+        const yrStr = prompt(`🎂 Enter 4-digit Birth Year for ${name}:`, '1995');
+        const birthYear = parseInt(yrStr || '1995', 10) || 1995;
+
+        const lang = prompt(`🌐 Preferred Language for ${name} (Hindi / English / Marathi):`, 'Hindi') || 'Hindi';
+
+        try {
+          showToast('Adding Lead...', `Adding ${name} to real leads database...`, 'indigo');
+          const res = await fetch('/api/leads/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name.trim(),
+              phone: phone.trim(),
+              birth_year: birthYear,
+              language: lang.trim()
+            })
+          });
+          const data = await res.json();
+          if (res.ok && data.lead) {
+            await fetchRealLeadsFromBackend();
+            customers = realLeads;
+            selectedCustomerId = data.lead.customer_id;
+            renderCustomerTable();
+            updateSelectedCustomerHeader();
+            showToast('Lead Added', `Added ${data.lead.name} (${data.lead.phone}) to real leads list. Ready to dial!`, 'emerald');
+          } else {
+            showToast('Failed to Add Lead', data.detail || 'Could not add lead.', 'rose');
+          }
+        } catch (err) {
+          showToast('Error', err.message, 'rose');
+        }
+      });
+
+      document.getElementById('callHimanshuQuickBtn').addEventListener('click', async () => {
+        let himanshu = realLeads.find(l => l.name === 'Himanshu Sharma' || l.phone === '+916267386284');
+        if (!himanshu) {
+          himanshu = {
+            customer_id: 'R001',
+            name: 'Himanshu Sharma',
+            phone: '+916267386284',
+            birth_year: 2001,
+            language: 'Hindi',
+            do_not_call: 0
+          };
+        }
+        selectedCustomerId = himanshu.customer_id;
+        renderCustomerTable();
+        updateSelectedCustomerHeader();
+        await executeRealOutboundCall(himanshu);
+      });
+
+      document.getElementById('downloadSampleCsvBtn').addEventListener('click', () => {
+        const sampleCsv = "name,phone,birth_year,language\n" +
+          "Himanshu Sharma,+916267386284,2001,Hindi\n" +
+          "Aarav Mehta,+919876543210,1990,English\n" +
+          "Pooja Patil,+919812345678,1988,Marathi\n";
+        const blob = new Blob([sampleCsv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'real_leads_sample.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('Sample CSV Downloaded', 'Downloaded real_leads_sample.csv. Fill in your numbers and click "Import Real Calls CSV"!', 'emerald');
       });
 
       document.getElementById('csvUploadInput').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
           const text = evt.target.result;
-          const lines = text.trim().split(/\r?\n/);
-          if (lines.length < 2) return;
-          const parsed = [];
-          for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',').map(s => s.trim());
-            if (cols.length >= 5) {
-              parsed.push({
-                customer_id: cols[0] || `C00${i}`,
-                name: cols[1],
-                phone: cols[2],
-                birth_year: parseInt(cols[3], 10) || 1985,
-                language: cols[4] || 'Hindi',
-                do_not_call: parseInt(cols[5] || '0', 10) || 0
+          const lines = text.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+          if (lines.length < 2) {
+            showToast('Invalid CSV', 'CSV must have a header row and at least 1 lead row.', 'rose');
+            return;
+          }
+
+          if (isRealTelephonyMode) {
+            // Real Telephony Mode: Parse leads schema (name, phone, birth_year, language)
+            const header = lines[0].toLowerCase().split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+            const nameIdx = header.findIndex(h => h.includes('name'));
+            const phoneIdx = header.findIndex(h => h.includes('phone') || h.includes('mobile') || h.includes('number'));
+            const yrIdx = header.findIndex(h => h.includes('birth') || h.includes('year') || h === 'yr');
+            const langIdx = header.findIndex(h => h.includes('lang') || h.includes('language'));
+
+            const leadsToImport = [];
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+              const name = nameIdx !== -1 ? cols[nameIdx] : cols[0];
+              const phone = phoneIdx !== -1 ? cols[phoneIdx] : (cols[1] || cols[2]);
+              const yr = yrIdx !== -1 ? parseInt(cols[yrIdx], 10) : (parseInt(cols[2], 10) || parseInt(cols[3], 10) || 1990);
+              const lang = langIdx !== -1 ? cols[langIdx] : (cols[3] || cols[4] || 'Hindi');
+
+              if (name && phone) {
+                leadsToImport.push({
+                  name: name,
+                  phone: phone,
+                  birth_year: isNaN(yr) ? 1990 : yr,
+                  language: lang || 'Hindi'
+                });
+              }
+            }
+
+            if (leadsToImport.length === 0) {
+              showToast('No Leads Found', 'Could not parse valid lead records from CSV.', 'rose');
+              return;
+            }
+
+            try {
+              showToast('Importing Leads...', `Uploading ${leadsToImport.length} real leads to database...`, 'indigo');
+              const res = await fetch('/api/leads/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leads: leadsToImport })
               });
+              const data = await res.json();
+              if (res.ok) {
+                await fetchRealLeadsFromBackend();
+                customers = realLeads;
+                if (realLeads.length > 0) {
+                  selectedCustomerId = realLeads[0].customer_id;
+                }
+                renderCustomerTable();
+                updateSelectedCustomerHeader();
+                showToast('Leads Imported', `Successfully imported ${data.count} real leads into Twilio outbound schema!`, 'emerald');
+              } else {
+                showToast('Import Failed', data.detail || 'Could not import leads', 'rose');
+              }
+            } catch (err) {
+              showToast('Import Error', err.message, 'rose');
+            }
+          } else {
+            // Test Mode: Original dummy customers parser
+            const parsed = [];
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',').map(s => s.trim());
+              if (cols.length >= 5) {
+                parsed.push({
+                  customer_id: cols[0] || `C00${i}`,
+                  name: cols[1],
+                  phone: cols[2],
+                  birth_year: parseInt(cols[3], 10) || 1985,
+                  language: cols[4] || 'Hindi',
+                  do_not_call: parseInt(cols[5] || '0', 10) || 0
+                });
+              }
+            }
+            if (parsed.length > 0) {
+              testCustomers = parsed;
+              customers = testCustomers;
+              selectedCustomerId = customers[0].customer_id;
+              renderCustomerTable();
+              updateSelectedCustomerHeader();
+              showToast('Test CSV Loaded', `Loaded ${parsed.length} customers from ${file.name}.`, 'emerald');
             }
           }
-          if (parsed.length > 0) {
-            customers = parsed;
-            selectedCustomerId = customers[0].customer_id;
-            renderCustomerTable();
-            updateSelectedCustomerHeader();
-            showToast('CSV Loaded', `Loaded ${parsed.length} customers from ${file.name}.`, 'emerald');
-          }
+          e.target.value = '';
         };
         reader.readAsText(file);
       });
