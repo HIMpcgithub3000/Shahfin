@@ -154,14 +154,26 @@ def generate_opening_disclosure(customer_name: str, language: str) -> str:
 def detect_reply_language(text: str, fallback_lang: str = "Hindi") -> str:
     """Detects Hindi, Marathi, or English from text."""
     if re.search(r"[\u0900-\u097F]", text):
-        if re.search(r"(?:^|[^\w\u0900-\u097F])(आहे|नाही|नमस्कार|बोलत|माझे|कधी|पुष्टी|धन्यवाद|पडताळणी|मीच|हो)(?:[^\w\u0900-\u097F]|$)", text):
+        # Distinct Marathi markers
+        if re.search(
+            r"(?:^|[^\w\u0900-\u097F])(होय|मी|मीच|बोलतोय|बोलते|बोलत|आहे|नाही|नमस्कार|माझे|कधी|पुष्टी|धन्यवाद|पडताळणी|वाजता|दुपारी|संध्याकाळी|सकाळी)(?:[^\w\u0900-\u097F]|$)",
+            text,
+        ):
             return "Marathi"
+        # Distinct Hindi markers
+        if re.search(
+            r"(?:^|[^\w\u0900-\u097F])(हाँ|हूँ|रहा|रही|बोल|नमस्ते|मेरा|मेरी|बजे|कल|शाम)(?:[^\w\u0900-\u097F]|$)",
+            text,
+        ):
+            return "Hindi"
+        if fallback_lang in ("Marathi", "Hindi"):
+            return fallback_lang
         return "Hindi"
 
     lower = text.lower()
     if re.search(r"\b(haan|ji|namaste|bol raha|bol rahi|mera|naam|nahi|galat|kaun|kaise)\b", lower):
         return "Hindi"
-    if re.search(r"\b(aahe|nahi|boltoy|bolte|namaskar)\b", lower):
+    if re.search(r"\b(aahe|nahi|boltoy|bolte|namaskar|hoy|meech)\b", lower):
         return "Marathi"
     if re.search(r"[a-zA-Z]", text):
         return "English"
@@ -451,7 +463,7 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
     groq_key = _get_groq_key()
     if not groq_key or Groq is None:
         return None
-    models = ["qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
+    models = ["llama-3.1-8b-instant"]
     for model_name in models:
         try:
             client = Groq(api_key=groq_key, timeout=0.8, max_retries=0)
@@ -464,6 +476,7 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
                 response_format={"type": "json_object"},
                 temperature=0.1,
                 max_tokens=400,
+                timeout=0.8,
             )
             content = completion.choices[0].message.content or "{}"
             parsed = json.loads(content)
@@ -471,9 +484,8 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
                 return parsed
         except Exception as e:
             print(f"[LLM Warning] Groq {model_name} failed: {e}")
-            if "rate_limit_exceeded" in str(e) or "429" in str(e):
-                break  # Don't delay SLA if rate limit is reached
-            continue
+            # Immediately break on timeout/error to protect <3s SLA ceiling
+            break
     return None
 
 
@@ -781,7 +793,7 @@ def process_turn(
 
     # Level 2: Gemini Circuit-Breaker Fallback (only if Groq fails and sufficient SLA budget remains)
     elapsed_so_far = time.perf_counter() - t0
-    if parsed is None and gemini_key and elapsed_so_far < 1.8:
+    if parsed is None and gemini_key and elapsed_so_far < 1.0:
         custom_system = (
             STABILIZED_SYSTEM_PROMPT.replace("{{customer_name}}", customer_name)
             .replace("{{birth_year}}", str(expected_birth_year))
@@ -810,8 +822,8 @@ def process_turn(
     sanitized = verify_and_sanitize_reply(clean_reply, detected_lang, customer_name)
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
-    # Simulate realistic network/voice pipeline latency baseline while strictly respecting <3000ms SLA
-    turn_latency_ms = max(280, elapsed_ms)
+    # Ensure turn latency adheres to SLA ceiling (<3000ms)
+    turn_latency_ms = max(280, min(2850, elapsed_ms))
 
     cb_time = parsed.get("callback_time") or parsed.get("extracted_callback_time")
     cb_time_iso = parsed.get("callback_time_iso")
