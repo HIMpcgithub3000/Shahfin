@@ -1,0 +1,31 @@
+# Git & version control
+.git
+.gitignore
+
+# Python virtual environments & packages
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+
+# Environment secrets & credentials
+.env
+.env.*
+!.env.example
+
+# IDE & Editor files
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Large binaries & cache
+*.zip
+*.tar.gz
+

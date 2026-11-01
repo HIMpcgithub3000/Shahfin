@@ -1,0 +1,40 @@
+services:
+  voicebot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: shaha-finlease-voicebot:latest
+    container_name: shaha_finlease_voicebot
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persist generated audio recordings on the host machine
+      - ./audio_recordings:/app/audio_recordings
+      # Mount data folder for customer & scenario CSVs
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/customers"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Optional: Uncomment if you wish to use PostgreSQL instead of SQLite
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: shaha_postgres
+  #   environment:
+  #     POSTGRES_USER: shaha_user
+  #     POSTGRES_PASSWORD: shaha_pass
+  #     POSTGRES_DB: shaha_finlease
+  #   ports:
+  #     - "5434:5432"
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+
+# volumes:
+#   pg_data:
+
