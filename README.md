@@ -17,6 +17,7 @@
 
 <br/>
 
+[🎥 Video Demos](#-video-demonstration--platform-walkthrough) •
 [🐳 Docker Setup](#-docker-setup--run-everywhere) •
 [🚀 Local Quickstart](#-local-installation--quickstart) •
 [🏗️ 16-Stage DAG Pipeline](#-16-stage-dag-pipeline-architecture) •
@@ -28,6 +29,20 @@
 ---
 
 </div>
+
+## 🎥 Video Demonstration & Platform Walkthrough
+
+> [!TIP]
+> **Note for Evaluators & Reviewers**: For better understanding and optimal pacing, please watch the demonstration videos in **1.2x** or **1.5x** speed.
+
+| # | Video Title | Link | Highlights & Scope |
+|:---:|:---|:---:|:---|
+| **01** | **Problem Statement and Flow** | [▶️ Watch Video #1](https://www.loom.com/share/6f26c033a68349c49ef5aa1f60540da5) | Background on Shaha Finlease (RBI-registered NBFC), risks of dialing outdated numbers, RBI harassment protections, and end-to-end verification conversation flow. |
+| **02** | **Voice Pipeline and AI Decision Understanding Flow** | [▶️ Watch Video #2](https://www.loom.com/share/41f87f52b65848f48863d88ee87fbe3e) | Deep dive into the 16-stage streaming DAG architecture, Silero VAD, Groq Whisper Turbo, Prompt Identity Token Stabilization, Microsoft Edge Neural TTS, and code-level deterministic safety guardrails. |
+| **03** | **Live Demo of the Platform (Call Console) & Live Calling with Guardrailing Checks** | [▶️ Watch Console Demo (3A)](https://www.loom.com/share/cf92572a249348bab4f5029a147d6ee1)<br/>[▶️ Watch Live Calling & Guardrails (3B)](https://www.loom.com/share/76e5a801265043e894af63d3b6cb109c) | Live walk-through: calling hour gatekeeper rejection (9 PM), Hindi Right Customer verification within 10s disclosure, Wrong Number auto-DNC flagging, Relative callback capture, active provocation attack defense, and live Twilio PSTN telecalling. |
+| **04** | **Report & Call Logs Analytics Dashboard Demonstration and Final Deliverables** | [▶️ Watch Video #4](https://www.loom.com/share/e646f0a9b87c4d0dac31f726e9088d0d) | Verification of SQL Server / SQLite database synchronization, KPI cards (Connect Rate, Right-Party Rate), turn-by-turn transcripts, in-browser neural audio playback, CSV audit export, and test suite verification. |
+
+---
 
 ## 📌 Executive Summary
 
