@@ -144,13 +144,20 @@ class TelephonyOutboundRequest(BaseModel):
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def serve_console_and_report() -> FileResponse:
+    target_path = None
     if os.path.exists(FRONTEND_PATH):
-        return FileResponse(FRONTEND_PATH)
-    # Check parent directory index.html if frontend/index.html is missing
-    parent_index = os.path.join(BASE_DIR, "..", "index.html")
-    if os.path.exists(parent_index):
-        return FileResponse(parent_index)
-    raise HTTPException(status_code=404, detail="index.html not found")
+        target_path = FRONTEND_PATH
+    else:
+        parent_index = os.path.join(BASE_DIR, "..", "index.html")
+        if os.path.exists(parent_index):
+            target_path = parent_index
+    if not target_path:
+        raise HTTPException(status_code=404, detail="index.html not found")
+    response = FileResponse(target_path)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.get("/api/health")

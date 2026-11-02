@@ -1207,6 +1207,13 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     // 2. APPLICATION STATE
     // =========================================================================
     let testCustomers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
+
+    // Strictly returns only test customers (C001-C010) — Himanshu is NEVER included in test mode
+    function getActiveTestCustomers() {
+      return (testCustomers || [])
+        .filter(c => c && c.customer_id && c.customer_id.startsWith('C') && c.customer_id !== 'C011' && c.customer_id !== 'R001' && c.name !== 'Himanshu Sharma');
+    }
+
     let realLeads = [
       {
         customer_id: 'R001',
@@ -1217,7 +1224,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         do_not_call: 0
       }
     ];
-    let customers = testCustomers;
+    let customers = getActiveTestCustomers();
 
     async function fetchRealLeadsFromBackend() {
       try {
@@ -1894,7 +1901,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           showToast('Real Telephony Mode Active', 'Now showing real leads (Himanshu Sharma +916267386284). You can import more numbers via CSV.', 'emerald');
         }
       } else {
-        customers = testCustomers;
+        customers = getActiveTestCustomers();
         selectedCustomerId = 'C001';
 
         if (container) {
@@ -2069,7 +2076,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Stopped before starting next call');
       }
 
-      const activeList = isRealTelephonyMode ? realLeads : testCustomers;
+      const activeList = isRealTelephonyMode ? realLeads : getActiveTestCustomers();
       const customer = activeList.find(c => c.customer_id === customerId) || activeList[0];
       if (!customer) return;
 
@@ -2408,13 +2415,13 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           const list = await res.json();
           if (Array.isArray(list) && list.length > 0) {
             testCustomers = list
-              .filter(c => c.customer_id && c.customer_id.startsWith('C') && c.customer_id !== 'C011')
+              .filter(c => c && c.customer_id && c.customer_id.startsWith('C') && c.customer_id !== 'C011' && c.customer_id !== 'R001' && c.name !== 'Himanshu Sharma')
               .map(c => ({
                 ...c,
                 birth_year: c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || 1985
               }));
             if (!isRealTelephonyMode) {
-              customers = testCustomers;
+              customers = getActiveTestCustomers();
               renderCustomerTable();
               updateSelectedCustomerHeader();
             }
@@ -2438,7 +2445,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const scenario = TEST_SCENARIOS[customerId];
       if (!scenario) return;
 
-      const customer = customers.find(c => c.customer_id === customerId);
+      const activeList = isRealTelephonyMode ? realLeads : getActiveTestCustomers();
+      const customer = activeList.find(c => c.customer_id === customerId) || activeList[0];
       const callNo = scenario.call_no || parseInt(customerId.replace(/\D/g, ''), 10) || 1;
       const callId = `CALL-${1000 + callNo}`;
       const audioUrl = `/audio_recordings/${callId}.mp3`;
@@ -2496,7 +2504,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
     function renderCustomerTable() {
       const tbody = document.getElementById('customerTableBody');
-      const displayCustomers = isRealTelephonyMode ? realLeads : testCustomers;
+      const displayCustomers = isRealTelephonyMode ? realLeads : getActiveTestCustomers();
       const countBadge = document.getElementById('customerListCountBadge');
       if (countBadge) countBadge.textContent = String(displayCustomers.length);
 
@@ -2527,10 +2535,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     }
 
     function updateSelectedCustomerHeader() {
-      const activeList = isRealTelephonyMode ? realLeads : testCustomers;
+      const activeList = isRealTelephonyMode ? realLeads : getActiveTestCustomers();
       let c = activeList.find(item => item.customer_id === selectedCustomerId);
       if (!c) {
-        c = activeList[0] || testCustomers[0];
+        c = activeList[0] || (isRealTelephonyMode ? realLeads[0] : INITIAL_CUSTOMERS[0]);
         selectedCustomerId = c.customer_id;
       }
       const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || (isRealTelephonyMode ? 2001 : 1985);
@@ -2971,7 +2979,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         if (dialBtn) {
           const cid = dialBtn.getAttribute('data-dial-customer');
           if (isRealTelephonyMode) {
-            const cust = customers.find(c => c.customer_id === cid);
+            const cust = realLeads.find(c => c.customer_id === cid) || realLeads[0];
             if (cust) executeRealOutboundCall(cust);
           } else {
             autoPlayCustomerScenario(cid);
@@ -2995,7 +3003,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
       document.getElementById('startCallBtn').addEventListener('click', () => {
         if (isRealTelephonyMode) {
-          const cust = customers.find(c => c.customer_id === selectedCustomerId);
+          const cust = realLeads.find(c => c.customer_id === selectedCustomerId) || realLeads[0];
           if (cust) executeRealOutboundCall(cust);
         } else {
           autoPlayCustomerScenario(selectedCustomerId);
@@ -3264,7 +3272,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           await fetch('/api/customers/reset', { method: 'POST' });
         } catch (e) {}
         testCustomers = JSON.parse(JSON.stringify(INITIAL_CUSTOMERS));
-        customers = testCustomers;
+        customers = getActiveTestCustomers();
         renderCustomerTable();
         updateSelectedCustomerHeader();
         showToast('Customers Reset', 'Reloaded 10 dummy customers from customers.csv with DNC = 0.', 'emerald');
@@ -3443,12 +3451,12 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
               }
             }
             if (parsed.length > 0) {
-              testCustomers = parsed;
-              customers = testCustomers;
-              selectedCustomerId = customers[0].customer_id;
+              testCustomers = parsed.filter(c => c && c.customer_id && c.customer_id.startsWith('C') && c.customer_id !== 'C011' && c.customer_id !== 'R001' && c.name !== 'Himanshu Sharma');
+              customers = getActiveTestCustomers();
+              selectedCustomerId = customers[0] ? customers[0].customer_id : 'C001';
               renderCustomerTable();
               updateSelectedCustomerHeader();
-              showToast('Test CSV Loaded', `Loaded ${parsed.length} customers from ${file.name}.`, 'emerald');
+              showToast('Test CSV Loaded', `Loaded ${customers.length} customers from ${file.name}.`, 'emerald');
             }
           }
           e.target.value = '';

@@ -193,7 +193,7 @@ def get_all_customers() -> List[Dict[str, Any]]:
         conn,
         "SELECT customer_id, name, phone, birth_year, language, do_not_call "
         "FROM Customer "
-        "WHERE SUBSTR(customer_id, 1, 1) = 'C' AND customer_id != 'C011' "
+        "WHERE SUBSTR(customer_id, 1, 1) = 'C' AND customer_id != 'C011' AND customer_id != 'R001' AND name != 'Himanshu Sharma' "
         "ORDER BY customer_id",
     )
     rows = cur.fetchall()
