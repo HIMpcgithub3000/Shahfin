@@ -383,6 +383,11 @@
               <p class="text-xs text-[#3D2817] leading-relaxed">
                 Calls placed in this mode ring the recipient's phone via Twilio carrier PSTN. Default target: <strong>Himanshu Sharma (<span class="mono font-semibold text-[#5D8C3E]">+916267386284</span>)</strong>.
               </p>
+              <div class="flex items-center gap-2 pt-1 text-xs">
+                <label class="text-[#3D2817] font-semibold whitespace-nowrap">Webhook URL:</label>
+                <input id="customWebhookUrlInput" type="text" class="flex-1 px-2.5 py-1 rounded-lg border border-[#5D8C3E]/40 bg-white text-[#3D2817] font-mono text-[11px]" value="https://fuzzy-days-ask.loca.lt" placeholder="https://your-tunnel.loca.lt" />
+                <button id="testWebhookBtn" type="button" class="px-2.5 py-1 rounded-lg bg-[#5D8C3E] text-white font-medium text-[11px] hover:bg-[#4d7533] transition" title="Test if public webhook responds">Ping</button>
+              </div>
               <div class="flex flex-wrap items-center gap-2 pt-1">
                 <button id="callHimanshuQuickBtn" type="button" class="flex-1 py-2 px-3.5 rounded-full bg-[#5D8C3E] hover:bg-[#4d7533] text-white text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5">
                   <span>📱 Call Himanshu Sharma (+916267386284)</span>
@@ -1956,6 +1961,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
 
       showToast('Initiating Live Phone Call', `Dialing ${customer.name} (${targetPhone}) via Twilio PSTN...`, 'emerald');
 
+      const webhookUrl = document.getElementById('customWebhookUrlInput')?.value?.trim();
+
       try {
         const resp = await fetch('/api/telephony/outbound', {
           method: 'POST',
@@ -1963,7 +1970,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           body: JSON.stringify({
             customer_id: customer.customer_id,
             phone_number: targetPhone,
-            language: effectiveLang
+            language: effectiveLang,
+            base_url: webhookUrl || undefined
           })
         });
 
@@ -2999,6 +3007,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         const targetPhone = prompt(`📱 Real Phone Call (Twilio/Exotel)\nEnter phone number in E.164 format:\nCustomer: ${cust ? cust.name : 'Borrower'}`, cust ? cust.phone : '+91');
         if (!targetPhone) return;
         try {
+          const webhookUrl = document.getElementById('customWebhookUrlInput')?.value?.trim();
           showToast('Placing Real Phone Call', `Calling ${targetPhone} via Twilio outbound telephony...`, 'indigo');
           const resp = await fetch('/api/telephony/outbound', {
             method: 'POST',
@@ -3006,7 +3015,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
             body: JSON.stringify({
               customer_id: cust ? cust.customer_id : 'C001',
               phone_number: targetPhone,
-              language: document.getElementById('manualLangSelect').value !== 'Auto' ? document.getElementById('manualLangSelect').value : (cust ? cust.language : 'Hindi')
+              language: document.getElementById('manualLangSelect').value !== 'Auto' ? document.getElementById('manualLangSelect').value : (cust ? cust.language : 'Hindi'),
+              base_url: webhookUrl || undefined
             })
           });
           const data = await resp.json();
@@ -3332,6 +3342,22 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         a.click();
         document.body.removeChild(a);
         showToast('Sample CSV Downloaded', 'Downloaded real_leads_sample.csv. Fill in your numbers and click "Import Real Calls CSV"!', 'emerald');
+      });
+
+      document.getElementById('testWebhookBtn')?.addEventListener('click', async () => {
+        const url = document.getElementById('customWebhookUrlInput')?.value?.trim();
+        if (!url) return;
+        showToast('Pinging Webhook', `Checking reachable status for ${url}...`, 'indigo');
+        try {
+          const res = await fetch(`${url}/api/telephony/twilio/voice?customer_id=C001&lang=Hindi`);
+          if (res.ok) {
+            showToast('Webhook Reachable ✓', 'Twilio voice webhook responded with valid TwiML!', 'emerald');
+          } else {
+            showToast('Webhook Error', `Server returned HTTP ${res.status}`, 'rose');
+          }
+        } catch (e) {
+          showToast('Webhook Unreachable', e.message, 'rose');
+        }
       });
 
       document.getElementById('csvUploadInput').addEventListener('change', (e) => {

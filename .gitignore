@@ -13,6 +13,7 @@ __pycache__/
 *.db
 *.mp3
 /tmp/
+runtime_tunnel_url.txt
 
 # Environment secrets
 .env

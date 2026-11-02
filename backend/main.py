@@ -139,6 +139,7 @@ class TelephonyOutboundRequest(BaseModel):
     phone_number: str
     customer_id: str = "C001"
     language: str = "Hindi"
+    base_url: Optional[str] = None
 
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
@@ -440,14 +441,29 @@ def initiate_real_phone_call(req: TelephonyOutboundRequest) -> Dict[str, Any]:
         opening_text = generate_opening_disclosure(cust_name, req.language)
         create_initial_call_record(call_id, req.customer_id, req.language, opening_text)
 
-        # Use public base_url or active public tunnel for bidirectional voicebot conversation:
-        tunnel_url = "https://petite-eggs-burn.loca.lt"
-        if base_url.startswith("https://") or (base_url.startswith("http://") and "localhost" not in base_url and "127.0.0.1" not in base_url and " " not in base_url):
-            effective_base = base_url
-        else:
-            effective_base = tunnel_url
+        # Resolve live public webhook URL for bidirectional Twilio voicebot conversation:
+        req_base = (req.base_url or "").strip()
+        runtime_file = os.path.join(BASE_DIR, "runtime_tunnel_url.txt")
+        file_base = ""
+        if os.path.exists(runtime_file):
+            try:
+                with open(runtime_file, "r") as f:
+                    file_base = f.read().strip()
+            except Exception:
+                pass
 
+        if req_base.startswith("https://") or (req_base.startswith("http://") and "localhost" not in req_base and "127.0.0.1" not in req_base):
+            effective_base = req_base
+        elif base_url.startswith("https://") or (base_url.startswith("http://") and "localhost" not in base_url and "127.0.0.1" not in base_url and " " not in base_url):
+            effective_base = base_url
+        elif file_base.startswith("https://"):
+            effective_base = file_base
+        else:
+            effective_base = "https://fuzzy-days-ask.loca.lt"
+
+        effective_base = effective_base.rstrip("/")
         voice_url = f"{effective_base}/api/telephony/twilio/voice?customer_id={req.customer_id}&lang={req.language}&call_id={call_id}"
+        print(f"[Twilio Dispatch] Placing outbound call to {req.phone_number} using voice_url: {voice_url}")
 
         tw_call = client.calls.create(
             to=req.phone_number,
