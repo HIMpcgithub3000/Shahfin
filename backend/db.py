@@ -188,7 +188,14 @@ def reset_customers(csv_path: str) -> None:
 def get_all_customers() -> List[Dict[str, Any]]:
     conn = get_connection()
     cur = conn.cursor()
-    execute_sql(cur, conn, "SELECT customer_id, name, phone, birth_year, language, do_not_call FROM Customer ORDER BY customer_id")
+    execute_sql(
+        cur,
+        conn,
+        "SELECT customer_id, name, phone, birth_year, language, do_not_call "
+        "FROM Customer "
+        "WHERE SUBSTR(customer_id, 1, 1) = 'C' AND customer_id != 'C011' "
+        "ORDER BY customer_id",
+    )
     rows = cur.fetchall()
     conn.close()
     return [
@@ -277,7 +284,7 @@ def get_real_leads() -> List[Dict[str, Any]]:
         conn,
         "SELECT customer_id, name, phone, birth_year, language, do_not_call "
         "FROM Customer "
-        "WHERE customer_id NOT IN ('C001','C002','C003','C004','C005','C006','C007','C008','C009','C010') "
+        "WHERE customer_id NOT IN ('C001','C002','C003','C004','C005','C006','C007','C008','C009','C010','C011') "
         "ORDER BY customer_id",
     )
     rows = cur.fetchall()

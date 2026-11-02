@@ -535,10 +535,10 @@
               <!-- Compact Quick-Reply Chips for Live Demo Testing -->
               <div class="pt-2 border-t border-[#6B4423]/10 space-y-2">
                 <div class="flex flex-wrap gap-1.5">
-                  <button type="button" data-quick-reply="हाँ, मैं ही बोल रहा हूँ।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#5D8C3E]/12 hover:bg-[#5D8C3E]/22 text-[#3D2817] border border-[#5D8C3E]/30 text-[11px] font-medium transition">
+                  <button type="button" id="btnConfirmNameHi" data-quick-reply="हाँ, मैं ही बोल रहा हूँ।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#5D8C3E]/12 hover:bg-[#5D8C3E]/22 text-[#3D2817] border border-[#5D8C3E]/30 text-[11px] font-medium transition">
                     🇮🇳 "हाँ, मैं ही बोल रहा हूँ" (Confirm Name - HI)
                   </button>
-                  <button type="button" data-quick-reply="Yes, this is speaking." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#5D8C3E]/12 hover:bg-[#5D8C3E]/22 text-[#3D2817] border border-[#5D8C3E]/30 text-[11px] font-medium transition">
+                  <button type="button" id="btnConfirmNameEn" data-quick-reply="Yes, this is speaking." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#5D8C3E]/12 hover:bg-[#5D8C3E]/22 text-[#3D2817] border border-[#5D8C3E]/30 text-[11px] font-medium transition">
                     🇬🇧 "Yes, speaking" (Confirm Name - EN)
                   </button>
                   <button type="button" id="btnCorrectBirthYear" class="px-2.5 py-1 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-[11px] font-medium transition">
@@ -547,13 +547,13 @@
                   <button type="button" id="btnWrongBirthYear" data-quick-reply="My birth year is 1999." class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#D4A056]/18 hover:bg-[#D4A056]/30 text-[#6B4423] border border-[#D4A056]/40 text-[11px] font-medium transition">
                     ❌ Wrong Birth Year (1999)
                   </button>
-                  <button type="button" data-quick-reply="रॉन्ग नंबर है, मैं इस नाम के किसी व्यक्ति को नहीं जानता।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#C0392B]/12 hover:bg-[#C0392B]/22 text-[#C0392B] border border-[#C0392B]/30 text-[11px] font-medium transition">
+                  <button type="button" id="btnWrongNumber" data-quick-reply="रॉन्ग नंबर है, मैं इस नाम के किसी व्यक्ति को नहीं जानता।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#C0392B]/12 hover:bg-[#C0392B]/22 text-[#C0392B] border border-[#C0392B]/30 text-[11px] font-medium transition">
                     🚫 Wrong Number (HI)
                   </button>
-                  <button type="button" data-quick-reply="वो अभी घर पर नहीं हैं, आप शाम 6 बजे कॉल कीजिए।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#4B8FB8]/12 hover:bg-[#4B8FB8]/22 text-[#4B8FB8] border border-[#4B8FB8]/30 text-[11px] font-medium transition">
+                  <button type="button" id="btnRelativeCallback" data-quick-reply="वो अभी घर पर नहीं हैं, आप शाम 6 बजे कॉल कीजिए।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#4B8FB8]/12 hover:bg-[#4B8FB8]/22 text-[#4B8FB8] border border-[#4B8FB8]/30 text-[11px] font-medium transition">
                     🕒 Relative: Call Back at 6 PM (HI)
                   </button>
-                  <button type="button" data-quick-reply="वो बाहर गए हैं, पता नहीं कब आएंगे।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#EADBC0]/70 hover:bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 text-[11px] font-medium transition">
+                  <button type="button" id="btnRelativeOut" data-quick-reply="वो बाहर गए हैं, पता नहीं कब आएंगे।" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#EADBC0]/70 hover:bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 text-[11px] font-medium transition">
                     👤 Relative: Out, No Callback Time
                   </button>
                   <button type="button" data-quick-reply="मला मराठीत बोला" class="quick-reply-btn px-2.5 py-1 rounded-full bg-[#B8763D]/15 hover:bg-[#B8763D]/25 text-[#3D2817] border border-[#B8763D]/35 text-[11px] font-medium transition" title="Switch language to Marathi mid-call (Bonus #2)">
@@ -2399,10 +2399,12 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         if (res.ok) {
           const list = await res.json();
           if (Array.isArray(list) && list.length > 0) {
-            testCustomers = list.map(c => ({
-              ...c,
-              birth_year: c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || 1985
-            }));
+            testCustomers = list
+              .filter(c => c.customer_id && c.customer_id.startsWith('C') && c.customer_id !== 'C011')
+              .map(c => ({
+                ...c,
+                birth_year: c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || 1985
+              }));
             if (!isRealTelephonyMode) {
               customers = testCustomers;
               renderCustomerTable();
@@ -2526,8 +2528,18 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || (isRealTelephonyMode ? 2001 : 1985);
       document.getElementById('activeCustomerTitle').textContent = `${c.customer_id} · ${c.name}`;
       document.getElementById('activeCustomerMeta').textContent = `${c.phone} · Preferred: ${c.language} · Birth Year: ${yr}`;
-      document.getElementById('detectedLangBadge').textContent = c.language === 'Hindi' ? 'Hindi (hi-IN)' : 'English (en-IN)';
 
+      // 1. Language badge and manual dropdown match selected customer's preferred language
+      const langBadgeText = c.language === 'Hindi' ? 'Hindi (hi-IN)' : (c.language === 'Marathi' ? 'Marathi (mr-IN)' : 'English (en-IN)');
+      const detectedBadge = document.getElementById('detectedLangBadge');
+      if (detectedBadge) detectedBadge.textContent = langBadgeText;
+
+      const manualLang = document.getElementById('manualLangSelect');
+      if (manualLang && (manualLang.value === 'Auto' || !activeCall || activeCall.ended)) {
+        manualLang.value = c.language || 'Auto';
+      }
+
+      // 2. Dynamic quick replies match selected customer's preferred language
       const correctBtn = document.getElementById('btnCorrectBirthYear');
       if (correctBtn) {
         correctBtn.textContent = `🎂 Give Correct Birth Year (${yr})`;
@@ -2538,14 +2550,95 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const wrongBtn = document.getElementById('btnWrongBirthYear');
       if (wrongBtn) {
         wrongBtn.textContent = `❌ Wrong Birth Year (${wrongYear})`;
-        wrongBtn.setAttribute('data-quick-reply', c.language === 'Hindi' ? `मेरा जन्म का साल ${wrongYear} है।` : `My birth year is ${wrongYear}.`);
+        const wrongText = c.language === 'Hindi'
+          ? `मेरा जन्म का साल ${wrongYear} है।`
+          : (c.language === 'Marathi' ? `माझे जन्माचे वर्ष ${wrongYear} आहे.` : `My birth year is ${wrongYear}.`);
+        wrongBtn.setAttribute('data-quick-reply', wrongText);
       }
 
+      const confirmHi = document.getElementById('btnConfirmNameHi');
+      if (confirmHi) {
+        confirmHi.setAttribute('data-quick-reply', `हाँ, मैं ${c.name} बोल रहा हूँ।`);
+      }
+      const confirmEn = document.getElementById('btnConfirmNameEn');
+      if (confirmEn) {
+        confirmEn.setAttribute('data-quick-reply', `Yes, this is ${c.name} speaking.`);
+      }
+
+      const wrongNumBtn = document.getElementById('btnWrongNumber');
+      if (wrongNumBtn) {
+        if (c.language === 'Hindi') {
+          wrongNumBtn.textContent = '🚫 Wrong Number (HI)';
+          wrongNumBtn.setAttribute('data-quick-reply', 'रॉन्ग नंबर है, मैं इस नाम के किसी व्यक्ति को नहीं जानता।');
+        } else if (c.language === 'Marathi') {
+          wrongNumBtn.textContent = '🚫 Wrong Number (MR)';
+          wrongNumBtn.setAttribute('data-quick-reply', 'हा चुकीचा नंबर आहे, मी या नावाच्या व्यक्तीला ओळखत नाही.');
+        } else {
+          wrongNumBtn.textContent = '🚫 Wrong Number (EN)';
+          wrongNumBtn.setAttribute('data-quick-reply', 'This is the wrong number, no one by that name lives here.');
+        }
+      }
+
+      const relCbBtn = document.getElementById('btnRelativeCallback');
+      if (relCbBtn) {
+        if (c.language === 'Hindi') {
+          relCbBtn.textContent = '🕒 Relative: Call Back at 6 PM (HI)';
+          relCbBtn.setAttribute('data-quick-reply', 'वो अभी घर पर नहीं हैं, आप शाम 6 बजे कॉल कीजिए।');
+        } else if (c.language === 'Marathi') {
+          relCbBtn.textContent = '🕒 Relative: Call Back at 6 PM (MR)';
+          relCbBtn.setAttribute('data-quick-reply', 'ते आता घरी नाहीत, तुम्ही संध्याकाळी ६ वाजता फोन करा.');
+        } else {
+          relCbBtn.textContent = '🕒 Relative: Call Back at 6 PM (EN)';
+          relCbBtn.setAttribute('data-quick-reply', 'They are out right now, please call back at 6 PM.');
+        }
+      }
+
+      const relOutBtn = document.getElementById('btnRelativeOut');
+      if (relOutBtn) {
+        if (c.language === 'Hindi') {
+          relOutBtn.textContent = '👤 Relative: Out, No Callback Time';
+          relOutBtn.setAttribute('data-quick-reply', 'वो बाहर गए हैं, पता नहीं कब आएंगे।');
+        } else if (c.language === 'Marathi') {
+          relOutBtn.textContent = '👤 Relative: Out, No Callback Time (MR)';
+          relOutBtn.setAttribute('data-quick-reply', 'ते बाहेर गेले आहेत, माहिती नाही कधी येतील.');
+        } else {
+          relOutBtn.textContent = '👤 Relative: Out, No Callback Time (EN)';
+          relOutBtn.setAttribute('data-quick-reply', 'They are out right now, not sure when they will be back.');
+        }
+      }
+
+      // 3. Test scenario metadata
       const sc = TEST_SCENARIOS[c.customer_id];
       if (sc && !isRealTelephonyMode) {
         document.getElementById('selectedTestExpectedBadge').textContent = `Expected: ${sc.expected_outcome}`;
         document.getElementById('selectedTestScenarioDesc').textContent =
           `Call #${sc.call_no} (${c.customer_id} · ${c.name}): ${sc.tester_plays} (${sc.tester_language}).`;
+      }
+
+      // 4. Right side Call Console script matches customer language (Hindi, English, or Marathi)
+      if (!activeCall || activeCall.ended) {
+        const openingScript = generateOpeningGreeting(c);
+        const container = document.getElementById('transcriptContainer');
+        if (container) {
+          const latencyMs = c.language === 'Hindi' ? 359 : 310;
+          container.innerHTML = `
+            <div class="flex items-start gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-[#3D2817] text-[#FDF8F0] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-sm">AI</div>
+              <div class="flex-1 bg-[#FFFDF9] border border-[#6B4423]/15 rounded-2xl rounded-tl-none p-3.5 text-xs sm:text-sm text-[#3D2817] shadow-sm">
+                <div class="flex items-center justify-between gap-2 text-[11px] text-[#B8763D] mb-1">
+                  <span class="font-semibold">Shaha Finlease Assistant (${c.language})</span>
+                  <div class="flex items-center gap-2">
+                    <span class="mono text-[#5D8C3E] font-semibold">${latencyMs} ms (&lt;3s ✓)</span>
+                    <button type="button" onclick="playAudioDetailSnippet('${encodeURIComponent(openingScript)}', '${c.language}')" class="px-2 py-0.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/20 font-medium text-[10px] flex items-center gap-1 transition cursor-pointer" title="Listen to opening script in ${c.language}">
+                      🔊 Listen
+                    </button>
+                  </div>
+                </div>
+                <p class="leading-relaxed">${openingScript}</p>
+              </div>
+            </div>
+          `;
+        }
       }
     }
 
