@@ -139,7 +139,7 @@ uvicorn backend.main:app --reload --port 8000
 
 ## 🏗️ 16-Stage DAG Pipeline Architecture
 
-The VoiceBrew pipeline operates as a **bidirectional streaming Directed Acyclic Graph (DAG)** of frame processors:
+The streaming pipeline operates as a **bidirectional Directed Acyclic Graph (DAG)** of frame processors:
 
 ```mermaid
 flowchart TD

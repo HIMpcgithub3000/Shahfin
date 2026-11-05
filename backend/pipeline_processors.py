@@ -1,6 +1,6 @@
 """Pipeline Processors & Streaming DAG Architecture.
 
-Based on the 16-stage VoiceBrew / Pipecat AI Pipeline Blueprint:
+16-Stage Streaming Pipeline DAG Architecture:
 [Carrier: Twilio / Exotel / Plivo]
            │ (WSS 8kHz μ-law)
            ▼
