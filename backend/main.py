@@ -539,13 +539,25 @@ def twilio_voice_webhook(
     twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
     action_url = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={cid}&amp;stage=AWAITING_NAME_CONFIRMATION"
 
+    if lang == "English":
+        ask_prompt = f"Please confirm, am I speaking with {cust_name}?"
+        timeout_prompt = "We could not hear your response. The call will be ended now. Goodbye."
+    elif lang == "Marathi":
+        ask_prompt = f"कृपया सांगा, मी {cust_name} यांच्याशी बोलत आहे का?"
+        timeout_prompt = "आम्हाला कोणताही प्रतिसाद मिळाला नाही. कॉल समाप्त केला जात आहे. नमस्कार."
+    else:
+        ask_prompt = f"कृपया बताएं, क्या मेरी बात {cust_name} जी से हो रही है?"
+        timeout_prompt = "कोई उत्तर नहीं मिला। कॉल समाप्त की जा रही है। नमस्ते।"
+
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+    <Pause length="1"/>
+    <Say language="{twiml_lang}">{opening}</Say>
     <Gather input="speech" action="{action_url}" method="POST" language="{twiml_lang}" timeout="8" speechTimeout="auto">
-        <Say language="{twiml_lang}">{opening}</Say>
+        <Say language="{twiml_lang}">{ask_prompt}</Say>
     </Gather>
-    <Say language="{twiml_lang}">कृपया अपना उत्तर बताएं। क्या मेरी बात {cust_name} जी से हो रही है?</Say>
-    <Gather input="speech" action="{action_url}" method="POST" language="{twiml_lang}" timeout="8" speechTimeout="auto"/>
+    <Say language="{twiml_lang}">{timeout_prompt}</Say>
+    <Hangup/>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
@@ -577,10 +589,16 @@ def twilio_turn_webhook(
 
     if not speech_text:
         twiml_lang = "hi-IN" if lang == "Hindi" else ("mr-IN" if lang == "Marathi" else "en-IN")
+        if lang == "English":
+            retry_prompt = "Pardon me, I could not hear your voice clearly. Could you please repeat?"
+        elif lang == "Marathi":
+            retry_prompt = "क्षमा करा, मला आपला आवाज स्पष्ट ऐकू आला नाही. कृपया पुन्हा सांगाल का?"
+        else:
+            retry_prompt = "क्षमा करें, मुझे आपकी आवाज़ नहीं सुनाई दी। क्या आप कृपया दोबारा बोल सकते हैं?"
         action_url = f"{base}/api/telephony/twilio/turn?customer_id={customer_id}&amp;lang={lang}&amp;call_id={cid}&amp;stage={stage}"
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say language="{twiml_lang}">क्षमा करें, मुझे आपकी आवाज़ नहीं सुनाई दी।</Say>
+    <Say language="{twiml_lang}">{retry_prompt}</Say>
     <Gather input="speech" action="{action_url}" method="POST" language="{twiml_lang}" timeout="7" speechTimeout="auto"/>
 </Response>"""
         return Response(content=twiml, media_type="application/xml")
@@ -631,12 +649,13 @@ def twilio_turn_webhook(
     <Hangup/>
 </Response>"""
     else:
+        reminder = "Please state your answer." if detected_lang == "English" else ("कृपया आपले उत्तर सांगा." if detected_lang == "Marathi" else "कृपया अपना उत्तर बताएं।")
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="speech" action="{next_action}" method="POST" language="{twiml_lang}" timeout="7" speechTimeout="auto">
         <Say language="{twiml_lang}">{bot_reply}</Say>
     </Gather>
-    <Say language="{twiml_lang}">कृपया अपना उत्तर बताएं।</Say>
+    <Say language="{twiml_lang}">{reminder}</Say>
     <Gather input="speech" action="{next_action}" method="POST" language="{twiml_lang}" timeout="7" speechTimeout="auto"/>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")

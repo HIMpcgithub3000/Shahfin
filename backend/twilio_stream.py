@@ -139,9 +139,9 @@ async def handle_twilio_media_stream(websocket: WebSocket, call_id: str) -> None
 
     # Pipeline Processors & State
     upsampler = SttAudioUpsampler16k()
-    greeting_lock = GreetingLockProcessor(lock_duration_sec=3.0)
-    interruption_guard = MinWordsInterruptionStrategy(min_words=2)
-    debounce = LLMTriggerDebounce(debounce_ms=150)
+    greeting_lock = GreetingLockProcessor(lock_duration_sec=3.5)
+    interruption_guard = MinWordsInterruptionStrategy(min_words=3)
+    debounce = LLMTriggerDebounce(debounce_ms=250)
     audio_recorder = AudioBufferProcessor(sample_rate=8000)
     metrics_tap = MetricsTap(call_id=call_id)
     context_aggregator: Optional[ContextAggregator] = None

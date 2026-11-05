@@ -89,6 +89,10 @@ DECISION & OUTCOME RULES:
    - Birth year matches {{birth_year}} -> thank them and state that verification is successful ("सत्यापन सफल रहा" / "contact details have been verified successfully"), end call, outcome = "Right customer", stage = "COMPLETED".
    - Birth year does not match {{birth_year}} -> politely state that "The birth year provided does not match our records" in English ("विवरण मेल नहीं खाता" in Hindi), thank them without revealing the expected year, end call, outcome = "Verification failed", stage = "COMPLETED".
 2. If the speaker says "wrong number" or "I don't know this person" (गलत नंबर / नहीं जानता) -> apologise sincerely ("असुविधा के लिए खेद है, हम इसे गलत नंबर अपडेट कर रहे हैं" / "sincerely apologise, marking this as a wrong number"), end call, outcome = "Wrong number", stage = "COMPLETED".
+2b. STRICT NAME VERIFICATION & DISCREPANCY: If the speaker states a different name or a different surname (e.g. target customer is {{customer_name}}, but the speaker says "Rahul Kumar", "Sunil", "Verma", or "mera naam Rahul Kumar hai"):
+   - You MUST NOT accept this as {{customer_name}}. They are a different person!
+   - Do NOT ask for birth year.
+   - Apologise that the call was intended for {{customer_name}}, end call politely, outcome = "Wrong number", stage = "COMPLETED".
 3. If a relative or third party answers and says {{customer_name}} is unavailable:
    - Reveal NOTHING about {{customer_name}} or why you are calling.
    - If current stage is AWAITING_NAME_CONFIRMATION: politely ask what time would be convenient to call back. Set stage = "AWAITING_CALLBACK_TIME", outcome = null.
@@ -129,6 +133,179 @@ RELATIVE_REGEX = _boundary_regex(
     r"not at home|out|busy|brother|sister|wife|husband|father|mother|relative|friend|call back|later|"
     r"घर पर नहीं|बाहर गए|बाहर गई|भाई|पत्नी|पिता|माता|शाम|बजे|बाद में कॉल|नाहीयेत|उद्या कॉल करा"
 )
+
+SURNAME_MAP = {
+    "sharma": "sharma", "शर्मा": "sharma",
+    "kumar": "kumar", "कुमार": "kumar",
+    "verma": "verma", "वर्मा": "verma",
+    "singh": "singh", "सिंह": "singh",
+    "patil": "patil", "पाटिल": "patil",
+    "kulkarni": "kulkarni", "कुलकर्णी": "kulkarni",
+    "deshmukh": "deshmukh", "देशमुख": "deshmukh",
+    "mehta": "mehta", "मेहता": "mehta",
+    "joshi": "joshi", "जोशी": "joshi",
+    "yadav": "yadav", "यादव": "yadav",
+    "gupta": "gupta", "गुप्ता": "gupta",
+    "nair": "nair", "नायर": "nair",
+    "iyer": "iyer", "अय्यर": "iyer",
+    "reddy": "reddy", "रेड्डी": "reddy",
+    "rao": "rao", "राव": "rao",
+    "mishra": "mishra", "मिश्रा": "mishra",
+    "pandey": "pandey", "पांडेय": "pandey",
+    "tiwari": "tiwari", "तिवारी": "tiwari",
+    "choudhary": "choudhary", "चौधरी": "choudhary",
+    "chauhan": "chauhan", "चौहान": "chauhan",
+    "patel": "patel", "पटेल": "patel",
+    "shah": "shah", "शाह": "shah",
+}
+
+
+def check_name_discrepancy(customer_name: str, input_text: str) -> Tuple[bool, Optional[str]]:
+    """Checks if the borrower input contains an explicit name/surname that contradicts the customer's name.
+
+    Prevents false confirmations when someone says a different surname (e.g. Rahul Kumar when customer is Rahul Sharma).
+    Uses canonical Indian surname collision matrix from identity_verifier.
+    """
+    if not customer_name or not input_text:
+        return False, None
+    if RELATIVE_REGEX.search(input_text):
+        return False, None
+    try:
+        from backend.identity_verifier import verify_target_identity
+        status, reason = verify_target_identity(customer_name, input_text)
+        if status == "DISCREPANCY":
+            return True, reason
+    except Exception as e:
+        pass
+
+    cust_tokens = [w.lower() for w in re.findall(r"[a-zA-Z\u0900-\u097F]+", customer_name)]
+    if not cust_tokens:
+        return False, None
+    cust_last = cust_tokens[-1] if len(cust_tokens) > 1 else ""
+
+    inp_words = [w.lower() for w in re.findall(r"[a-zA-Z\u0900-\u097F]+", input_text)]
+    for w in inp_words:
+        canonical_surname = SURNAME_MAP.get(w)
+        if canonical_surname and cust_last:
+            canonical_cust_last = SURNAME_MAP.get(cust_last, cust_last)
+            if canonical_surname != canonical_cust_last:
+                return True, f"Conflicting surname '{w}' does not match expected '{cust_last}'"
+
+    # Explicit negation + identity (e.g. 'नहीं मैं राहुल कुमार हूँ', 'no this is someone else')
+    if re.search(r"\b(nahi|nahin|नहीं|no|not)\b.*?\b(main|i am|this is|hoon|हूँ)\b", input_text, re.IGNORECASE):
+        return True, "Speaker explicitly negated customer identity"
+
+    # Stated full or first name mismatch
+    m_name = re.search(r"(?:my name is|mera naam|naam hai|naav|नाव)\s+([a-zA-Z\u0900-\u097F]+)", input_text, re.IGNORECASE)
+    if m_name:
+        stated = m_name.group(1).lower()
+        if stated not in cust_tokens and stated not in ("shaha", "finlease"):
+            return True, f"Stated name '{stated}' does not match customer '{customer_name}'"
+
+    return False, None
+
+
+class RPVStateMachine:
+    """Production-ready Right Party Verification State Machine with strict 2-Factor authentication."""
+
+    def __init__(self, expected_name: str, expected_birth_year: int, language: str = "Hindi"):
+        self.expected_name = expected_name
+        self.expected_birth_year = str(expected_birth_year)
+        self.language = language
+        self.state = "INITIATED"
+        self.attempts = 0
+
+    def process_turn(self, user_transcript: str) -> Dict[str, Any]:
+        text = user_transcript.strip()
+        self.attempts += 1
+        from backend.identity_verifier import verify_target_identity
+
+        # State 1: Identity Evaluation
+        if self.state == "INITIATED":
+            status, reason = verify_target_identity(self.expected_name, text)
+            if status == "DISCREPANCY":
+                self.state = "FAILED_SURNAME_MISMATCH"
+                if self.language == "Hindi":
+                    reply = f"असुविधा के लिए खेद है। यह कॉल {self.expected_name} जी के लिए थी। हम इस नंबर को गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।"
+                elif self.language == "Marathi":
+                    reply = f"गैरसोयीबद्दल क्षमस्व. हा कॉल {self.expected_name} यांच्यासाठी होता. आम्ही हा चुकीचा नंबर म्हणून नोंदवत आहोत. धन्यवाद, नमस्कार."
+                else:
+                    reply = f"I apologize for the inconvenience. This call was intended for {self.expected_name}. I have marked this as a wrong number so you will not be called again. Thank you and goodbye."
+                return {
+                    "outcome": "Wrong number",
+                    "reply": reply,
+                    "end_call": True,
+                    "stage": "COMPLETED",
+                }
+            if status == "DENIAL":
+                self.state = "FAILED_DENIAL"
+                if self.language == "Hindi":
+                    reply = "असुविधा के लिए क्षमा करें। हमने इस नंबर को गलत नंबर के रूप में चिह्नित कर लिया है। आपका धन्यवाद, नमस्ते।"
+                elif self.language == "Marathi":
+                    reply = "गैरसोयीबद्दल क्षमा असावी. आम्ही हा नंबर चुकीचा नंबर म्हणून नोंदवला आहे. धन्यवाद, नमस्कार."
+                else:
+                    reply = "I apologize for the inconvenience. We have marked this as a wrong number in our records. Thank you and goodbye."
+                return {
+                    "outcome": "Wrong number",
+                    "reply": reply,
+                    "end_call": True,
+                    "stage": "COMPLETED",
+                }
+            if status in ("CONFIRMED", "AMBIGUOUS"):
+                # Mandatory 2-Factor RPV: First name or full name confirmation triggers birth year challenge
+                self.state = "CHALLENGE_DOB"
+                if self.language == "Hindi":
+                    reply = f"धन्यवाद {self.expected_name} जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।"
+                elif self.language == "Marathi":
+                    reply = f"धन्यवाद {self.expected_name} जी. पडताळणीसाठी कृपया तुमचे जन्म वर्ष (Birth Year) सांगा."
+                else:
+                    reply = f"Thank you, {self.expected_name}. For verification purposes, could you please provide your year of birth?"
+                return {
+                    "outcome": None,
+                    "reply": reply,
+                    "end_call": False,
+                    "stage": "AWAITING_BIRTH_YEAR",
+                }
+
+        # State 2: DOB Verification
+        if self.state == "CHALLENGE_DOB":
+            years_found = re.findall(r"\b(19\d{2}|20\d{2})\b", text)
+            if years_found and years_found[0] == self.expected_birth_year:
+                self.state = "VERIFIED_SUCCESS"
+                if self.language == "Hindi":
+                    reply = f"धन्यवाद {self.expected_name} जी। आपका विवरण सत्यापित हो गया है। आपका दिन शुभ हो।"
+                elif self.language == "Marathi":
+                    reply = f"धन्यवाद {self.expected_name} जी. तुमचे तपशील यशस्वीरित्या पडताळले गेले आहेत. आपला दिवस चांगला जावो."
+                else:
+                    reply = f"Thank you, {self.expected_name}. Your contact details have been verified successfully. Have a pleasant day."
+                return {
+                    "outcome": "Right customer",
+                    "reply": reply,
+                    "end_call": True,
+                    "stage": "COMPLETED",
+                }
+            else:
+                self.state = "FAILED_DOB_MISMATCH"
+                if self.language == "Hindi":
+                    reply = "आपके द्वारा दिया गया जन्म वर्ष हमारे रिकॉर्ड से मेल नहीं खाता। कॉल करने के लिए धन्यवाद।"
+                elif self.language == "Marathi":
+                    reply = "दिलेले जन्माचे वर्ष आमच्या नोंदीशी जुळत नाही. कॉल केल्याबद्दल धन्यवाद."
+                else:
+                    reply = "The birth year provided does not match our records. Thank you for your time, goodbye."
+                return {
+                    "outcome": "Verification failed",
+                    "reply": reply,
+                    "end_call": True,
+                    "stage": "COMPLETED",
+                }
+
+        # Catch-all fallback
+        return {
+            "outcome": "Not connected",
+            "reply": "हम आपकी बात स्पष्ट रूप से नहीं समझ पाए। कॉल समाप्त की जा रही है।" if self.language != "English" else "I could not understand your response clearly. Ending the call.",
+            "end_call": True,
+            "stage": "COMPLETED",
+        }
 
 
 def generate_opening_disclosure(customer_name: str, language: str) -> str:
@@ -463,10 +640,10 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
     groq_key = _get_groq_key()
     if not groq_key or Groq is None:
         return None
-    models = ["llama-3.1-8b-instant"]
+    models = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
     for model_name in models:
         try:
-            client = Groq(api_key=groq_key, timeout=0.8, max_retries=0)
+            client = Groq(api_key=groq_key, timeout=1.8, max_retries=0)
             completion = client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -474,9 +651,9 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
                     {"role": "user", "content": "Analyze the borrower's input and produce the required JSON output."},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.1,
-                max_tokens=400,
-                timeout=0.8,
+                temperature=0.0,
+                max_tokens=1000,
+                timeout=1.8,
             )
             content = completion.choices[0].message.content or "{}"
             parsed = json.loads(content)
@@ -484,8 +661,7 @@ def _call_groq_llama(prompt: str) -> Optional[Dict[str, Any]]:
                 return parsed
         except Exception as e:
             print(f"[LLM Warning] Groq {model_name} failed: {e}")
-            # Immediately break on timeout/error to protect <3s SLA ceiling
-            break
+            continue
     return None
 
 
@@ -717,8 +893,19 @@ def run_deterministic_nlu(
         else:
             bot_reply = f"I am an automated assistant calling from Shaha Finlease. This call is recorded for verification purposes. Am I speaking with {customer_name}?"
 
+    # 8.6 Name Discrepancy Guardrail (e.g. Rahul Kumar when customer is Rahul Sharma)
+    elif check_name_discrepancy(customer_name, input_text)[0] and stage == "AWAITING_NAME_CONFIRMATION":
+        outcome = "Wrong number"
+        new_stage = "COMPLETED"
+        if detected_lang == "Hindi":
+            bot_reply = f"असुविधा के लिए खेद है। यह कॉल {customer_name} जी के लिए थी। हम इस नंबर को गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।"
+        elif detected_lang == "Marathi":
+            bot_reply = f"गैरसोयीबद्दल क्षमस्व. हा कॉल {customer_name} यांच्यासाठी होता. आम्ही हा चुकीचा नंबर म्हणून नोंदवत आहोत. धन्यवाद, नमस्कार."
+        else:
+            bot_reply = f"I apologize for the inconvenience. This call was intended for {customer_name}. I have marked this as a wrong number so you will not be called again. Thank you and goodbye."
+
     # 9. Name confirmation ("Yes, speaking" / "हाँ, मैं राहुल शर्मा बोल रहा हूँ" / "होय")
-    elif NAME_CONFIRM_REGEX.search(input_text) or (detected_lang == "Marathi" and re.search(r"(?:^|[^\w\u0900-\u097F])हो(?:[^\w\u0900-\u097F]|$)", input_text)):
+    elif not check_name_discrepancy(customer_name, input_text)[0] and (NAME_CONFIRM_REGEX.search(input_text) or (detected_lang == "Marathi" and re.search(r"(?:^|[^\w\u0900-\u097F])हो(?:[^\w\u0900-\u097F]|$)", input_text))):
         new_stage = "AWAITING_BIRTH_YEAR"
         if detected_lang == "Hindi":
             bot_reply = f"धन्यवाद {customer_name} जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।"
@@ -812,7 +999,20 @@ def process_turn(
 
     # Code-Level Safety Guardrail Enforcement (Layer 1)
     detected_lang = parsed.get("detected_language") or detect_reply_language(input_text, language)
-    raw_reply = parsed.get("bot_reply", "")
+
+    # Strict Identity Guardrail: If name mismatch detected, override LLM false confirmation!
+    is_name_mismatch, _ = check_name_discrepancy(customer_name, input_text)
+    if is_name_mismatch and stage == "AWAITING_NAME_CONFIRMATION":
+        parsed["stage"] = "COMPLETED"
+        parsed["outcome"] = "Wrong number"
+        if detected_lang == "Hindi":
+            raw_reply = f"असुविधा के लिए खेद है। यह कॉल {customer_name} जी के लिए थी। हम इस नंबर को गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।"
+        elif detected_lang == "Marathi":
+            raw_reply = f"गैरसोयीबद्दल क्षमस्व. हा कॉल {customer_name} यांच्यासाठी होता. आम्ही हा चुकीचा नंबर म्हणून नोंदवत आहोत. धन्यवाद, नमस्कार."
+        else:
+            raw_reply = f"I apologize for the inconvenience. This call was intended for {customer_name}. I have marked this as a wrong number so you will not be called again. Thank you and goodbye."
+    else:
+        raw_reply = parsed.get("bot_reply", "")
 
     # Pipeline DAG Stage 11 (Meta-Narration Filter) & Stage 12 (TTS Text Sanitizer)
     from backend.pipeline_processors import MetaNarrationFilter, TTSTextSanitizer

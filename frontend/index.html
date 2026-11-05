@@ -1571,6 +1571,90 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     // =========================================================================
     // 6. CONVERSATIONAL NLU & DIALOGUE ENGINE
     // =========================================================================
+    const SURNAME_CLIENT_MAP = {
+      sharma: 'sharma', 'शर्मा': 'sharma',
+      kumar: 'kumar', 'कुमार': 'kumar',
+      verma: 'verma', 'वर्मा': 'verma',
+      singh: 'singh', 'सिंह': 'singh',
+      patil: 'patil', 'पाटिल': 'patil',
+      kulkarni: 'kulkarni', 'कुलकर्णी': 'kulkarni',
+      deshmukh: 'deshmukh', 'देशमुख': 'deshmukh',
+      mehta: 'mehta', 'मेहता': 'mehta',
+      gupta: 'gupta', 'गुप्ता': 'gupta',
+      yadav: 'yadav', 'यादव': 'yadav',
+      joshi: 'joshi', 'जोशी': 'joshi',
+      nair: 'nair', 'नायर': 'nair',
+      menon: 'menon', 'मेनन': 'menon',
+      pillai: 'pillai', 'पिल्लई': 'pillai',
+      iyer: 'iyer', 'अय्यर': 'iyer',
+      reddy: 'reddy', 'रेड्डी': 'reddy',
+      rao: 'rao', 'राव': 'rao',
+      mishra: 'mishra', 'मिश्रा': 'mishra',
+      pandey: 'pandey', 'पांडेय': 'pandey',
+      tiwari: 'tiwari', 'तिवारी': 'tiwari',
+      choudhary: 'choudhary', 'चौधरी': 'choudhary',
+      chauhan: 'chauhan', 'चौहान': 'chauhan',
+      patel: 'patel', 'पटेल': 'patel',
+      shah: 'shah', 'शाह': 'shah'
+    };
+
+    const FIRST_NAME_CLIENT_MAP = {
+      rahul: 'rahul', 'राहुल': 'rahul',
+      priya: 'priya', 'प्रिया': 'priya',
+      amit: 'amit', 'अमित': 'amit',
+      sneha: 'sneha', 'स्नेहा': 'sneha',
+      vikram: 'vikram', 'विक्रम': 'vikram',
+      anjali: 'anjali', 'अंजलि': 'anjali', 'अंजली': 'anjali',
+      rohan: 'rohan', 'रोहन': 'rohan',
+      kavita: 'kavita', 'कविता': 'kavita',
+      suresh: 'suresh', 'सुरेश': 'suresh',
+      neha: 'neha', 'नेहा': 'neha',
+      himanshu: 'himanshu', 'हिमांशु': 'himanshu'
+    };
+
+    function checkClientNameDiscrepancy(targetName, spoken) {
+      if (!targetName || !spoken) return false;
+      const targetTokens = (targetName.match(/[a-zA-Z\u0900-\u097F]+/g) || []).map(w => w.toLowerCase());
+      const targetLast = targetTokens[targetTokens.length - 1] || '';
+      const canonTargetLast = SURNAME_CLIENT_MAP[targetLast] || targetLast;
+      const targetCanonAll = targetTokens.map(t => FIRST_NAME_CLIENT_MAP[t] || SURNAME_CLIENT_MAP[t] || t);
+
+      const spokenWords = (spoken.match(/[a-zA-Z\u0900-\u097F]+/g) || []).map(w => w.toLowerCase());
+
+      // 1. Conflicting surname check
+      for (const w of spokenWords) {
+        if (SURNAME_CLIENT_MAP[w]) {
+          const canonSpoken = SURNAME_CLIENT_MAP[w];
+          if (canonSpoken !== canonTargetLast && !targetCanonAll.includes(canonSpoken)) {
+            return true;
+          }
+        }
+      }
+
+      // 2. Explicit stated name mismatch (e.g. "mera naam X hai" or "this is X")
+      const statedMatch = spoken.match(/(?:mera naam|my name is|this is|naam hai)\s+([a-zA-Z\u0900-\u097F]+(?:\s+[a-zA-Z\u0900-\u097F]+)?)/i);
+      if (statedMatch) {
+        const statedWords = (statedMatch[1].match(/[a-zA-Z\u0900-\u097F]+/g) || [])
+          .map(w => w.toLowerCase())
+          .filter(w => !['main', 'mein', 'hum', 'speaking', 'here', 'shaha', 'finlease', 'ji', 'जी', 'sahab', 'sir'].includes(w));
+        if (statedWords.length > 0) {
+          const statedLast = statedWords[statedWords.length - 1];
+          if (SURNAME_CLIENT_MAP[statedLast]) {
+            const canonStatedLast = SURNAME_CLIENT_MAP[statedLast];
+            if (canonStatedLast !== canonTargetLast && !targetCanonAll.includes(canonStatedLast)) {
+              return true;
+            }
+          }
+          const statedFirst = FIRST_NAME_CLIENT_MAP[statedWords[0]] || statedWords[0];
+          const targetFirst = FIRST_NAME_CLIENT_MAP[targetTokens[0]] || targetTokens[0];
+          if (statedFirst !== targetFirst && !['haan', 'yes', 'ji', 'जी'].includes(statedWords[0])) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
     function generateOpeningGreeting(customer) {
       const lang = customer.language || 'Hindi';
       if (lang === 'Hindi') {
@@ -1747,7 +1831,15 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
             : `Thank you for letting me know. Could you please share a convenient time for us to call back to reach ${customer.name}?`;
         }
       }
-      else if (/\b(yes|yeah|speaking|i am|this is|haan|ji|main|bol raha|bol rahi|हाँ|जी|मैं|बोल रहा|बोल रही|मीच|हो)\b/i.test(inputText)) {
+      else if (checkClientNameDiscrepancy(customer.name, inputText) && activeCall.stage === 'AWAITING_NAME_CONFIRMATION') {
+        terminalOutcome = 'Wrong number';
+        botReply = detectedLang === 'Hindi'
+          ? `असुविधा के लिए खेद है। यह कॉल ${customer.name} जी के लिए थी। हम इस नंबर को गलत नंबर के रूप में अपडेट कर रहे हैं। धन्यवाद, नमस्ते।`
+          : detectedLang === 'Marathi'
+          ? `गैरसोयीबद्दल क्षमस्व. हा कॉल ${customer.name} यांच्यासाठी होता. आम्ही हा चुकीचा नंबर म्हणून नोंदवत आहोत. धन्यवाद, नमस्कार.`
+          : `I apologize for the inconvenience. This call was intended for ${customer.name}. I have marked this as a wrong number so you will not be called again. Thank you and goodbye.`;
+      }
+      else if (!checkClientNameDiscrepancy(customer.name, inputText) && /\b(yes|yeah|speaking|i am|this is he|this is she|haan|ji haan|main hi|bol raha|bol rahi|हाँ|जी|मैं ही|बोल रहा|बोल रही|मीच|हो|होय)\b/i.test(inputText)) {
         activeCall.stage = 'AWAITING_BIRTH_YEAR';
         botReply = detectedLang === 'Hindi'
           ? `धन्यवाद ${customer.name} जी। सुरक्षा सत्यापन के लिए कृपया अपना जन्म का वर्ष (Birth Year) बताएं।`

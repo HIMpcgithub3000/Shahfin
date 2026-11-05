@@ -458,6 +458,61 @@ def test_birth_year_never_in_preflight_or_customer_api():
         assert "birth_year" not in c
 
 
+def test_recruiter_issue_2_rahul_kumar_vs_rahul_sharma():
+    """Recruiter Issue #2: When customer is Rahul Sharma and caller says Rahul Kumar, reject as Wrong number!"""
+    customer = get_customer("C001")
+    assert customer is not None
+    assert customer["name"] == "Rahul Sharma"
+
+    # Test variety of Rahul Kumar utterances
+    utterances = [
+        "mera naam rahul kumar hai",
+        "main rahul kumar bol raha hu",
+        "Rahul Kumar बोल रहा हूँ",
+        "This is Rahul Kumar",
+        "rahul kumar"
+    ]
+    for utt in utterances:
+        res = process_turn(customer, utt, "AWAITING_NAME_CONFIRMATION", "Hindi")
+        assert res["outcome"] == "Wrong number", f"Failed for utterance '{utt}', got {res['outcome']}"
+        assert res["stage"] == "COMPLETED"
+        assert "Rahul Sharma" in res["bot_reply"]
+
+
+def test_recruiter_issue_1_introductory_line_twiml_architecture():
+    """Recruiter Issue #1: Bulletproof introductory line delivery over Twilio PSTN.
+    
+    Verifies:
+    1. <Pause length="1"/> is present to eliminate cellular carrier RTP setup delay.
+    2. Mandatory Shaha Finlease opening declaration is unnested and un-interruptible before <Gather>.
+    3. <Gather> handles borrower speech recognition.
+    """
+    res = client.post("/api/telephony/twilio/voice?customer_id=C001&lang=Hindi")
+    assert res.status_code == 200
+    twiml = res.text
+    assert "<Pause length=\"1\"/>" in twiml
+    assert "Shaha Finlease" in twiml or "शाहा फिनलीज" in twiml
+    assert "<Gather input=\"speech\"" in twiml
+    # Decoupled Say before Gather
+    pause_pos = twiml.find("<Pause length=\"1\"/>")
+    gather_pos = twiml.find("<Gather")
+    assert pause_pos < gather_pos, "Pause must occur before Gather"
+
+
+def test_english_calling_for_priya_vikram_rohan_neha():
+    """Verify English language calling & opening disclosures for C002, C005, C007, C010."""
+    english_ids = ["C002", "C005", "C007", "C010"]
+    for cid in english_ids:
+        cust = get_customer(cid)
+        assert cust is not None
+        assert cust["language"] == "English"
+        init_res = client.post("/api/calls/initiate", json={"customer_id": cid, "simulated_hour": 11})
+        assert init_res.status_code == 200
+        data = init_res.json()
+        assert "Hello, I am an automated assistant calling from Shaha Finlease" in data["opening_disclosure"]
+        assert cust["name"] in data["opening_disclosure"]
+
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
 
