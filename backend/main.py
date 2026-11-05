@@ -419,6 +419,20 @@ def get_call_audio_endpoint(call_id: str):
     raise HTTPException(status_code=404, detail="Call audio recording not found")
 
 
+@app.get("/api/telephony/runtime_tunnel")
+def get_runtime_tunnel() -> Dict[str, str]:
+    """Returns the live active public tunnel URL for Twilio webhook routing."""
+    runtime_file = os.path.join(BASE_DIR, "runtime_tunnel_url.txt")
+    url = ""
+    if os.path.exists(runtime_file):
+        try:
+            with open(runtime_file, "r") as f:
+                url = f.read().strip()
+        except Exception:
+            pass
+    return {"url": url or "https://ranging-bottles-anime-rated.trycloudflare.com"}
+
+
 @app.post("/api/telephony/outbound")
 def initiate_real_phone_call(req: TelephonyOutboundRequest) -> Dict[str, Any]:
     """Bonus #5: Places a real outbound phone call via Twilio trial API."""
@@ -505,7 +519,11 @@ def twilio_voice_webhook(
 ) -> Response:
     """Twilio Webhook: Initial TwiML connecting Twilio call to conversational agent."""
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
-    is_secure = "https" in (request.headers.get("x-forwarded-proto") or "") or "loca.lt" in host or "ngrok" in host
+    is_secure = (
+        "https" in (request.headers.get("x-forwarded-proto") or "")
+        or "https" in (request.headers.get("x-forwarded-ssl") or "")
+        or not ("localhost" in host or "127.0.0.1" in host)
+    )
     proto = "https" if is_secure else "http"
     base = f"{proto}://{host}"
     cid = call_id or get_next_call_id()
@@ -583,7 +601,12 @@ def twilio_turn_webhook(
     print(f"\n[Twilio Speech Received] Borrower said: '{speech_text}' | Customer: {customer_id} | Stage: {stage} | Lang: {lang}")
 
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
-    proto = request.headers.get("x-forwarded-proto") or ("https" if "loca.lt" in host or "ngrok" in host else "http")
+    is_secure = (
+        "https" in (request.headers.get("x-forwarded-proto") or "")
+        or "https" in (request.headers.get("x-forwarded-ssl") or "")
+        or not ("localhost" in host or "127.0.0.1" in host)
+    )
+    proto = "https" if is_secure else "http"
     base = f"{proto}://{host}"
     cid = call_id or ""
 
