@@ -22,10 +22,10 @@ from backend.db import clear_calls, get_all_customers, get_connection, execute_s
 client = TestClient(app)
 
 PERSONA_RUNS: List[Dict[str, Any]] = [
-    # 1. Hindi Right Customer (Run 1: C001 Rahul Sharma)
+    # Call 1: C001 Rahul Sharma (Right customer - Hindi)
     {
         "customer_id": "C001",
-        "name": "Hindi Right Customer (Run 1)",
+        "name": "Call #1 (C001 · Rahul Sharma) Right Customer (Hindi)",
         "expected_outcome": "Right customer",
         "expected_connected": True,
         "turns": [
@@ -33,63 +33,31 @@ PERSONA_RUNS: List[Dict[str, Any]] = [
             ("मेरा जन्म का साल 1985 है।", "AWAITING_BIRTH_YEAR", "Hindi"),
         ],
     },
-    # 2. Hindi Right Customer (Run 2: C006 Anjali Deshmukh)
-    {
-        "customer_id": "C006",
-        "name": "Hindi Right Customer (Run 2)",
-        "expected_outcome": "Right customer",
-        "expected_connected": True,
-        "turns": [
-            ("हाँ, मैं अंजलि देशमुख बोल रही हूँ।", "AWAITING_NAME_CONFIRMATION", "Hindi"),
-            ("मेरा जन्म वर्ष 1995 है।", "AWAITING_BIRTH_YEAR", "Hindi"),
-        ],
-    },
-    # 3. English Wrong Birth Year (Run 1: C002 Priya Nair)
+    # Call 2: C002 Priya Nair (Wrong Birth Year - English)
     {
         "customer_id": "C002",
-        "name": "English Wrong Birth Year (Run 1)",
+        "name": "Call #2 (C002 · Priya Nair) Verification Failed (English)",
         "expected_outcome": "Verification failed",
         "expected_connected": True,
         "turns": [
             ("Yes, this is Priya Nair speaking.", "AWAITING_NAME_CONFIRMATION", "English"),
-            ("My birth year is 1999.", "AWAITING_BIRTH_YEAR", "English"),
+            ("My birth year is 1996.", "AWAITING_BIRTH_YEAR", "English"),
         ],
     },
-    # 4. English Wrong Birth Year (Run 2: C005 Vikram Singh)
-    {
-        "customer_id": "C005",
-        "name": "English Wrong Birth Year (Run 2)",
-        "expected_outcome": "Verification failed",
-        "expected_connected": True,
-        "turns": [
-            ("Yes, Vikram Singh here.", "AWAITING_NAME_CONFIRMATION", "English"),
-            ("I was born in 1988.", "AWAITING_BIRTH_YEAR", "English"),
-        ],
-    },
-    # 5. Wrong Number (Run 1: C003 Amit Patil)
+    # Call 3: C003 Amit Patil (Wrong Number - Hindi)
     {
         "customer_id": "C003",
-        "name": "Wrong Number (Run 1)",
+        "name": "Call #3 (C003 · Amit Patil) Wrong Number (Hindi)",
         "expected_outcome": "Wrong number",
         "expected_connected": True,
         "turns": [
             ("रॉन्ग नंबर है, मैं किसी अमित पाटिल को नहीं जानता।", "AWAITING_NAME_CONFIRMATION", "Hindi"),
         ],
     },
-    # 6. Wrong Number (Run 2: C008 Kavita Joshi)
-    {
-        "customer_id": "C008",
-        "name": "Wrong Number (Run 2)",
-        "expected_outcome": "Wrong number",
-        "expected_connected": True,
-        "turns": [
-            ("गलत नंबर लगा दिया है आपने, यहाँ कोई कविता नहीं रहती।", "AWAITING_NAME_CONFIRMATION", "Hindi"),
-        ],
-    },
-    # 7. Relative Answers: Callback Requested (Run 1: C004 Sneha Kulkarni)
+    # Call 4: C004 Sneha Kulkarni (Relative Answers: Callback - Hindi)
     {
         "customer_id": "C004",
-        "name": "Relative Callback (Run 1)",
+        "name": "Call #4 (C004 · Sneha Kulkarni) Callback Requested (Hindi)",
         "expected_outcome": "Callback requested",
         "expected_connected": True,
         "turns": [
@@ -97,10 +65,50 @@ PERSONA_RUNS: List[Dict[str, Any]] = [
             ("आप आज शाम 6:30 बजे कॉल कर लीजिए।", "AWAITING_CALLBACK_TIME", "Hindi"),
         ],
     },
-    # 8. Relative Answers: No Callback Time (Run 2: C009 Suresh Yadav)
+    # Call 5: C005 Vikram Singh (Silence / 15s Timeout - English)
+    {
+        "customer_id": "C005",
+        "name": "Call #5 (C005 · Vikram Singh) 15s Silence (English)",
+        "expected_outcome": "Not connected",
+        "expected_connected": False,
+        "turns": [],  # 15s silence
+    },
+    # Call 6: C006 Anjali Deshmukh (Right customer - Hindi)
+    {
+        "customer_id": "C006",
+        "name": "Call #6 (C006 · Anjali Deshmukh) Right Customer (Hindi)",
+        "expected_outcome": "Right customer",
+        "expected_connected": True,
+        "turns": [
+            ("हाँ, मैं अंजलि देशमुख बोल रही हूँ।", "AWAITING_NAME_CONFIRMATION", "Hindi"),
+            ("मेरा जन्म वर्ष 1995 है।", "AWAITING_BIRTH_YEAR", "Hindi"),
+        ],
+    },
+    # Call 7: C007 Rohan Mehta (Wrong Birth Year - English)
+    {
+        "customer_id": "C007",
+        "name": "Call #7 (C007 · Rohan Mehta) Verification Failed (English)",
+        "expected_outcome": "Verification failed",
+        "expected_connected": True,
+        "turns": [
+            ("Yes, I am Rohan Mehta.", "AWAITING_NAME_CONFIRMATION", "English"),
+            ("I was born in 1990.", "AWAITING_BIRTH_YEAR", "English"),
+        ],
+    },
+    # Call 8: C008 Kavita Joshi (Wrong Number - Hindi)
+    {
+        "customer_id": "C008",
+        "name": "Call #8 (C008 · Kavita Joshi) Wrong Number (Hindi)",
+        "expected_outcome": "Wrong number",
+        "expected_connected": True,
+        "turns": [
+            ("गलत नंबर लगा दिया है आपने, यहाँ कोई कविता नहीं रहती।", "AWAITING_NAME_CONFIRMATION", "Hindi"),
+        ],
+    },
+    # Call 9: C009 Suresh Yadav (Relative Answers: No Callback - Hindi)
     {
         "customer_id": "C009",
-        "name": "Relative No Callback (Run 2)",
+        "name": "Call #9 (C009 · Suresh Yadav) Third Party Answered (Hindi)",
         "expected_outcome": "Third party answered",
         "expected_connected": True,
         "turns": [
@@ -108,18 +116,10 @@ PERSONA_RUNS: List[Dict[str, Any]] = [
             ("मुझे नहीं मालूम कोई समय।", "AWAITING_CALLBACK_TIME", "Hindi"),
         ],
     },
-    # 9. Silence / No Answer: Not Connected (Run 1: C007 Rohan Mehta)
-    {
-        "customer_id": "C007",
-        "name": "Silence / Dropped Midway (Run 1)",
-        "expected_outcome": "Not connected",
-        "expected_connected": False,
-        "turns": [],  # Recipient hangs up or 15s silence before speaking
-    },
-    # 10. Silence / No Answer: Not Connected (Run 2: C010 Neha Gupta)
+    # Call 10: C010 Neha Gupta (Silence / Dropped Midway - English)
     {
         "customer_id": "C010",
-        "name": "Silence / Dropped Midway (Run 2)",
+        "name": "Call #10 (C010 · Neha Gupta) Dropped Midway (English)",
         "expected_outcome": "Not connected",
         "expected_connected": False,
         "turns": [],

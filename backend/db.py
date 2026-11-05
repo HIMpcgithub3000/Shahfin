@@ -107,6 +107,7 @@ def get_connection():
             print(f"[DB Notice] PostgreSQL connection failed ({e}), using SQLite fallback.")
 
     conn = sqlite3.connect(SQLITE_DB_PATH, timeout=30.0)
+    conn.execute("PRAGMA busy_timeout = 30000;")
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn
