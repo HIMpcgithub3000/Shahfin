@@ -335,14 +335,12 @@
             </div>
 
             <!-- Customer List Table -->
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
+            <div class="overflow-x-hidden">
+              <table class="w-full text-left border-collapse text-xs table-auto">
                 <thead>
                   <tr class="bg-[#F7EFE2]/80 text-[#6B5541] border-b border-[#6B4423]/10 uppercase tracking-wider text-[11px]">
-                    <th class="py-2.5 px-3">Customer</th>
-                    <th class="py-2.5 px-2">Phone</th>
-                    <th class="py-2.5 px-2">Birth Yr</th>
-                    <th class="py-2.5 px-2">Lang</th>
+                    <th class="py-2.5 px-3">Borrower / Details</th>
+                    <th class="py-2.5 px-1 text-center">Lang</th>
                     <th class="py-2.5 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -970,7 +968,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Rahul Sharma',
         phone: '+919000000001',
         start_time: '2026-10-29 10:05:12',
-        duration_seconds: 22,
+        duration_seconds: 58,
         connected: true,
         outcome: 'Right customer',
         language: 'Hindi',
@@ -995,7 +993,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Priya Nair',
         phone: '+919000000002',
         start_time: '2026-10-29 10:08:40',
-        duration_seconds: 20,
+        duration_seconds: 50,
         connected: true,
         outcome: 'Verification failed',
         language: 'English',
@@ -1020,7 +1018,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Amit Patil',
         phone: '+919000000003',
         start_time: '2026-10-29 10:12:05',
-        duration_seconds: 14,
+        duration_seconds: 42,
         connected: true,
         outcome: 'Wrong number',
         language: 'Hindi',
@@ -1043,7 +1041,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Sneha Kulkarni',
         phone: '+919000000004',
         start_time: '2026-10-29 10:16:30',
-        duration_seconds: 25,
+        duration_seconds: 60,
         connected: true,
         outcome: 'Callback requested',
         language: 'Hindi',
@@ -1068,7 +1066,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Vikram Singh',
         phone: '+919000000005',
         start_time: '2026-10-29 10:20:00',
-        duration_seconds: 15,
+        duration_seconds: 29,
         connected: false,
         outcome: 'Not connected',
         language: 'English',
@@ -1090,7 +1088,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Anjali Deshmukh',
         phone: '+919000000006',
         start_time: '2026-10-29 10:24:18',
-        duration_seconds: 21,
+        duration_seconds: 56,
         connected: true,
         outcome: 'Right customer',
         language: 'Hindi',
@@ -1115,7 +1113,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Rohan Mehta',
         phone: '+919000000007',
         start_time: '2026-10-29 10:28:50',
-        duration_seconds: 19,
+        duration_seconds: 48,
         connected: true,
         outcome: 'Verification failed',
         language: 'English',
@@ -1140,7 +1138,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Kavita Joshi',
         phone: '+919000000008',
         start_time: '2026-10-29 10:33:10',
-        duration_seconds: 13,
+        duration_seconds: 39,
         connected: true,
         outcome: 'Wrong number',
         language: 'Hindi',
@@ -1163,7 +1161,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Suresh Yadav',
         phone: '+919000000009',
         start_time: '2026-10-29 10:37:45',
-        duration_seconds: 24,
+        duration_seconds: 54,
         connected: true,
         outcome: 'Third party answered',
         language: 'Hindi',
@@ -1188,7 +1186,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         customer_name: 'Neha Gupta',
         phone: '+919000000010',
         start_time: '2026-10-29 10:41:02',
-        duration_seconds: 5,
+        duration_seconds: 21,
         connected: false,
         outcome: 'Not connected',
         language: 'English',
@@ -2655,31 +2653,40 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         const isSelected = c.customer_id === selectedCustomerId;
         const isSamplePlaying = currentPlayingSampleId === c.customer_id && fullCallAudioPlayer && !fullCallAudioPlayer.paused;
         const dncBadge = c.do_not_call === 1
-          ? '<span class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30 font-semibold">DNC</span>'
+          ? '<span class="ml-1 text-[9px] px-1.5 py-0.2 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30 font-semibold">DNC</span>'
           : '';
         const yr = c.birth_year || DEMO_FIXTURE_YEARS[c.customer_id] || (isRealTelephonyMode ? 2001 : 1985);
         return `
           <tr data-customer-row="${c.customer_id}" class="cursor-pointer transition ${isSelected ? 'bg-[#EADBC0]/55 border-l-4 border-l-[#3D2817]' : 'hover:bg-[#F7EFE2]'}">
-            <td class="py-2.5 px-3 font-medium text-[#3D2817]">
-              <span class="mono text-[#B8763D] font-semibold mr-1">${c.customer_id}</span> ${c.name} ${dncBadge}
+            <td class="py-2 px-3">
+              <div class="font-medium text-[#3D2817] flex items-center gap-1 leading-tight">
+                <span class="mono text-[#B8763D] font-bold text-xs">${c.customer_id}</span>
+                <span class="font-semibold text-[#3D2817] text-xs truncate max-w-[130px] sm:max-w-[150px]">${c.name}</span>
+                ${dncBadge}
+              </div>
+              <div class="text-[11px] mono text-[#8C735A] flex items-center gap-1.5 mt-0.5 leading-none">
+                <span>${c.phone}</span>
+                <span>•</span>
+                <span>${yr}</span>
+              </div>
             </td>
-            <td class="py-2.5 px-2 mono text-[#6B5541] font-semibold">${c.phone}</td>
-            <td class="py-2.5 px-2 mono text-[#3D2817] font-medium">${yr}</td>
-            <td class="py-2.5 px-2">
-              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.language === 'Hindi' ? 'bg-[#D4A056]/20 text-[#6B4423]' : 'bg-[#4B8FB8]/15 text-[#4B8FB8]'}">${c.language}</span>
+            <td class="py-2 px-1 text-center whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.language === 'Hindi' ? 'bg-[#D4A056]/20 text-[#6B4423]' : 'bg-[#4B8FB8]/15 text-[#4B8FB8]'}">${c.language}</span>
             </td>
-            <td class="py-2.5 px-3 text-right whitespace-nowrap">
+            <td class="py-2 px-3 text-right whitespace-nowrap">
               ${isRealTelephonyMode ? `
-                <button type="button" data-dial-customer="${c.customer_id}" class="px-3 py-1 rounded-full bg-[#5D8C3E] hover:bg-[#4d7533] text-[#FDF8F0] font-semibold shadow-sm transition text-xs inline-flex items-center gap-1 cursor-pointer">
+                <button type="button" data-dial-customer="${c.customer_id}" class="px-3 py-1 rounded-lg bg-[#5D8C3E] hover:bg-[#4d7533] text-[#FDF8F0] font-semibold shadow-xs transition text-xs inline-flex items-center gap-1 cursor-pointer">
                   <span>📱 Real Call</span>
                 </button>
               ` : `
-                <button type="button" data-sample-audio="${c.customer_id}" class="px-2.5 py-1 rounded-full ${isSamplePlaying ? 'bg-[#5D8C3E] hover:bg-[#4d7533] text-white ring-2 ring-[#5D8C3E]/40 font-semibold animate-pulse' : 'bg-[#EADBC0]/80 hover:bg-[#D4A056]/40 text-[#6B4423] border border-[#B8763D]/30 font-medium'} transition text-xs inline-flex items-center gap-1 shadow-sm mr-1.5 cursor-pointer" title="Play pre-recorded sample call audio for ${c.name}">
-                  <span>${isSamplePlaying ? '⏹️ Stop Audio' : '🎧 Sample Audio'}</span>
-                </button>
-                <button type="button" data-dial-customer="${c.customer_id}" class="px-3 py-1 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium shadow-sm transition text-xs inline-flex items-center gap-1 cursor-pointer" title="Start live voicebot call with ${c.name}">
-                  <span>📞 Call</span>
-                </button>
+                <div class="inline-flex items-center justify-end gap-1.5">
+                  <button type="button" data-sample-audio="${c.customer_id}" class="px-2 py-1 rounded-lg ${isSamplePlaying ? 'bg-[#5D8C3E] text-white ring-2 ring-[#5D8C3E]/40 font-semibold animate-pulse' : 'bg-[#EADBC0]/80 hover:bg-[#D4A056]/40 text-[#6B4423] border border-[#B8763D]/30 font-medium'} transition text-xs inline-flex items-center gap-1 shadow-xs cursor-pointer" title="Play pre-recorded sample call audio for ${c.name}">
+                    <span>${isSamplePlaying ? '⏹️ Stop' : '🎧 Sample'}</span>
+                  </button>
+                  <button type="button" data-dial-customer="${c.customer_id}" class="px-2.5 py-1 rounded-lg bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium shadow-xs transition text-xs inline-flex items-center gap-1 cursor-pointer" title="Start live voicebot call with ${c.name}">
+                    <span>📞 Call</span>
+                  </button>
+                </div>
               `}
             </td>
           </tr>
