@@ -271,40 +271,6 @@
       <!-- MAIN WORKSPACE -->
       <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        <!-- AUDIO DEMO BANNER: Listen to Full Call Recordings (Bot + Customer) -->
-        <div class="glass-card p-4 sm:p-5 border border-[#B8763D]/25 bg-gradient-to-r from-[#FFFDF9] via-[#F7EFE2] to-[#FFFDF9] shadow-md">
-          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full bg-[#5D8C3E] animate-pulse"></span>
-                <span class="font-display font-bold text-base text-[#3D2817]">🎧 Listen to Complete Call Audio (Both Bot &amp; Customer Speaking)</span>
-              </div>
-              <p class="text-xs text-[#6B5541] mt-1">
-                Hear full realistic Hindi conversations synthesized with Microsoft neural voices: Shaha Finlease Bot (<span class="font-semibold text-[#B8763D]">Swara</span>) &amp; Borrower (<span class="font-semibold text-[#3D2817]">Madhur</span>).
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <button type="button" onclick="playFullCallAudio('/audio_demos/full_call_1_right_customer.mp3', 'Call 1: Right Customer (Rahul Sharma)')" class="px-3.5 py-2 rounded-xl bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer">
-                <span>▶️ Call 1: Right Customer (25s)</span>
-              </button>
-              <button type="button" onclick="playFullCallAudio('/audio_demos/full_call_2_wrong_number.mp3', 'Call 2: Wrong Number (Amit Patil)')" class="px-3.5 py-2 rounded-xl bg-[#FFFDF9] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/25 text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer">
-                <span>▶️ Call 2: Wrong Number (15s)</span>
-              </button>
-              <button type="button" onclick="playFullCallAudio('/audio_demos/full_call_3_relative_callback.mp3', 'Call 3: Relative Callback (Sneha Kulkarni)')" class="px-3.5 py-2 rounded-xl bg-[#FFFDF9] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/25 text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer">
-                <span>▶️ Call 3: Relative Callback (25s)</span>
-              </button>
-              <button id="stopFullAudioBtn" type="button" onclick="stopFullCallAudio()" class="px-3 py-2 rounded-xl bg-[#C0392B]/10 hover:bg-[#C0392B]/20 text-[#C0392B] border border-[#C0392B]/30 text-xs font-semibold hidden cursor-pointer">
-                ⏹️ Stop Audio
-              </button>
-            </div>
-          </div>
-          <!-- Audio status indicator -->
-          <div id="fullAudioPlayingIndicator" class="mt-3 pt-3 border-t border-[#6B4423]/10 text-xs text-[#B8763D] font-medium hidden flex items-center gap-2">
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#B8763D] animate-ping"></span>
-            <span id="fullAudioPlayingLabel">Now Playing Voice...</span>
-          </div>
-        </div>
-
         <!-- ========================================================= -->
         <!-- SCREEN 1: CALL CONSOLE (Section 5 Screen 1)               -->
         <!-- ========================================================= -->
