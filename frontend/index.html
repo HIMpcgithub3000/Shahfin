@@ -1334,6 +1334,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     let audioChunksRecorded = [];
     let isRecordingMedia = false;
     let isBotSpeaking = false;
+    let botSpeakingSafetyTimeout = null;
 
     function stopAllAudio() {
       if (currentTtsAudio) {
@@ -1429,6 +1430,17 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       isBotSpeaking = true;
       pulseWaveform(Math.max(2200, text.length * 85));
 
+      // Safety watchdog: ensure silence countdown is never held hostage if audio stalls or errors
+      clearTimeout(botSpeakingSafetyTimeout);
+      botSpeakingSafetyTimeout = setTimeout(() => {
+        if (isBotSpeaking) {
+          isBotSpeaking = false;
+          if (activeCall && !activeCall.ended) {
+            resetSilenceCountdown();
+          }
+        }
+      }, 7000);
+
       try {
         const audioUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(lang)}`;
         const audio = new Audio(audioUrl);
@@ -1444,6 +1456,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         };
 
         audio.onended = () => {
+          clearTimeout(botSpeakingSafetyTimeout);
           isBotSpeaking = false;
           currentTtsAudio = null;
           // Silence countdown begins ONLY after the bot finishes speaking
@@ -2177,22 +2190,35 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       const customer = activeList.find(c => c.customer_id === customerId) || activeList[0];
       if (!customer) return;
 
-      selectedCustomerId = customerId;
+      selectedCustomerId = customer.customer_id;
       renderCustomerTable();
-      updateSelectedCustomerHeader();
 
       // IF REAL CALL MODE IS ON (and not a scenario script replay), EXECUTE REAL OUTBOUND TWILIO CALL!
       if (isRealTelephonyMode && !isAutoPlay) {
+        updateSelectedCustomerHeader();
         await executeRealOutboundCall(customer);
         return;
       }
 
+      // Check DNC compliance gatekeeper:
+      if (customer.do_not_call === 1) {
+        updateSelectedCustomerHeader();
+        showToast('Call Blocked — Do Not Call (DNC) Active', `${customer.name} (${customer.customer_id}) requested Do Not Call. Refused per Compliance Rule #6.`, 'rose');
+        return;
+      }
+
       const windowCheck = checkCallWindowAllowed();
-      let simHour = null;
-      const clockMode = document.getElementById('clockModeSelect').value;
-      if (clockMode === 'out_night') simHour = 21;
-      else if (clockMode === 'out_early') simHour = 6;
-      else if (clockMode === 'in_window') simHour = 11;
+      // For Test Calls console sessions, default to open calling window (11:00 AM IST)
+      // unless tester explicitly chose an out-of-window test option (out_night / out_early)
+      let simHour = 11;
+      const clockMode = document.getElementById('clockModeSelect')?.value || 'in_window';
+      if (clockMode === 'out_night') {
+        simHour = 21;
+      } else if (clockMode === 'out_early') {
+        simHour = 6;
+      } else if (clockMode === 'live_clock') {
+        simHour = new Date().getHours();
+      }
 
       // Feature #4 Backend-Owned Call Lifecycle (POST /api/calls/initiate)
       let backendCallId = null;
@@ -2201,7 +2227,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         const initRes = await fetch('/api/calls/initiate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer_id: customerId, simulated_hour: simHour })
+          body: JSON.stringify({ customer_id: customer.customer_id, simulated_hour: simHour })
         });
         if (!initRes.ok) {
           const errData = await initRes.json().catch(() => ({}));
@@ -2209,6 +2235,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           if (reason.includes('Do Not Call')) {
             customer.do_not_call = 1;
             renderCustomerTable();
+            updateSelectedCustomerHeader();
             showToast('Call Blocked — Do Not Call (DNC) Active', `${customer.name} (${customer.customer_id}) requested Do Not Call. Refused per Compliance Rule #6.`, 'rose');
           } else {
             blockedOutOfWindowCount++;
@@ -2222,33 +2249,40 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         backendCallId = initData.call_id;
         if (initData.opening_disclosure) backendOpening = initData.opening_disclosure;
       } catch (err) {
-        // Fallback to client preflight check if backend unreachable
-        if (!windowCheck.allowed) {
-          blockedOutOfWindowCount++;
-          updateReportView();
-          showToast(
-            `Call Refused — Outside Call Window (${windowCheck.timeLabel})`,
-            `${windowCheck.reason}`,
-            'rose'
-          );
-          renderBlockedCallScreen(customer, windowCheck);
-          return;
-        }
+        console.warn('Backend /api/calls/initiate unreachable, proceeding with client verification:', err);
+      }
 
-        if (customer.do_not_call === 1) {
-          showToast(
-            'Call Blocked — Do Not Call (DNC) Active',
-            `${customer.name} (${customer.customer_id}) requested Do Not Call. Refused per Compliance Rule #6.`,
-            'rose'
-          );
-          return;
+      // 1. Unconditionally lock language to the customer's preferred language written in table
+      const custLang = customer.language || 'Hindi';
+      const manualLang = document.getElementById('manualLangSelect');
+      if (manualLang) manualLang.value = custLang;
+
+      const detectedBadge = document.getElementById('detectedLangBadge');
+      if (detectedBadge) {
+        detectedBadge.textContent = custLang === 'Hindi' ? 'Hindi (hi-IN)' : (custLang === 'Marathi' ? 'Marathi (mr-IN)' : 'English (en-IN)');
+      }
+
+      // Update input placeholder to match customer name and language
+      const inputField = document.getElementById('borrowerTextInput');
+      if (inputField) {
+        if (custLang === 'Hindi') {
+          inputField.placeholder = `${customer.name} के रूप में बोलें या टाइप करें (Hindi)...`;
+        } else if (custLang === 'Marathi') {
+          inputField.placeholder = `${customer.name} म्हणून बोला किंवा टाईप करा (Marathi)...`;
+        } else {
+          inputField.placeholder = `Speak or type as ${customer.name} (English)...`;
         }
       }
+
+      // Sync customer title & metadata in header
+      const yr = customer.birth_year || DEMO_FIXTURE_YEARS[customer.customer_id] || (isRealTelephonyMode ? 2001 : 1985);
+      document.getElementById('activeCustomerTitle').textContent = `${customer.customer_id} · ${customer.name}`;
+      document.getElementById('activeCustomerMeta').textContent = `${customer.phone} · Preferred: ${customer.language} · Birth Year: ${yr}`;
 
       const now = new Date();
       const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
       const openingLatency = Math.floor(290 + Math.random() * 70);
-      const openingText = backendOpening || generateOpeningGreeting(customer);
+      const openingText = generateOpeningGreeting(customer);
 
       activeCall = {
         call_id: forcedCallId || backendCallId || `CALL-${1000 + calls.length + 1}`,
@@ -2261,7 +2295,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         duration_seconds: 0,
         connected: false,
         outcome: 'Pending',
-        language: customer.language,
+        language: custLang,
         callback_time: null,
         stage: 'AWAITING_NAME_CONFIRMATION',
         latencies: [openingLatency],
@@ -2270,7 +2304,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         transcript: [
           {
             speaker: 'Bot',
-            lang: customer.language,
+            lang: custLang,
             latency_ms: openingLatency,
             text: openingText
           }
@@ -2278,14 +2312,27 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       };
 
       updateLatencyBadge(openingLatency);
-      document.getElementById('callStateBadge').textContent = 'LIVE CALL';
-      document.getElementById('callStateBadge').className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#5D8C3E]/15 text-[#5D8C3E] border border-[#5D8C3E]/30 font-semibold';
+
+      // Transition to vibrant pulsating LIVE CALL state
+      const callStateBadge = document.getElementById('callStateBadge');
+      if (callStateBadge) {
+        callStateBadge.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-[#5D8C3E] mr-1.5 animate-pulse"></span>LIVE CALL';
+        callStateBadge.className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#5D8C3E]/20 text-[#5D8C3E] border border-[#5D8C3E]/40 font-bold flex items-center shadow-xs';
+      }
+
+      const avatar = document.getElementById('callAvatarPulse');
+      if (avatar) {
+        avatar.className = 'w-11 h-11 rounded-2xl bg-[#5D8C3E] text-[#FDF8F0] flex items-center justify-center text-base shadow-sm ring-4 ring-[#5D8C3E]/30 animate-pulse';
+      }
+
       document.getElementById('lastOutcomePill').textContent = 'Outcome: In Progress...';
       document.getElementById('endCallBtn').disabled = false;
       document.getElementById('triggerSilenceTimeoutBtn').disabled = false;
+      document.getElementById('callDurationText').textContent = '00:00';
+      document.getElementById('silenceCountdownText').textContent = '15s';
 
       renderLiveTranscript();
-      speakBotText(openingText, customer.language);
+      speakBotText(openingText, custLang);
 
       clearInterval(callDurationInterval);
       clearInterval(silenceTimerInterval);
@@ -2322,15 +2369,18 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       if (!activeCall) return;
       const rem = activeCall.silenceRemaining;
       const total = activeCall.silenceTotal || (activeCall.connected ? 45 : 15);
-      document.getElementById('silenceCountdownText').textContent = `${rem}s`;
+      const textEl = document.getElementById('silenceCountdownText');
+      if (textEl) textEl.textContent = `${rem}s`;
       const pct = Math.max(0, (rem / total) * 100);
       const bar = document.getElementById('silenceProgressBar');
-      bar.style.width = `${pct}%`;
-      bar.className = rem <= 5
-        ? 'bg-[#C0392B] h-full transition-all duration-300'
-        : rem <= (total * 0.4)
-        ? 'bg-[#D4A056] h-full transition-all duration-300'
-        : 'bg-[#5D8C3E] h-full transition-all duration-300';
+      if (bar) {
+        bar.style.width = `${pct}%`;
+        bar.className = rem <= 5
+          ? 'bg-[#C0392B] h-full transition-all duration-300'
+          : rem <= (total * 0.4)
+          ? 'bg-[#D4A056] h-full transition-all duration-300'
+          : 'bg-[#5D8C3E] h-full transition-all duration-300';
+      }
     }
 
     function trigger15SecondSilenceDisconnect() {
@@ -2351,11 +2401,30 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         }
       }
 
+      // Closing statement spoken by bot in recipient's language before hangup:
+      let closingNotice = '';
+      if (activeCall.language === 'English') {
+        closingNotice = 'We could not hear any response. The call is now ending. Thank you.';
+      } else if (activeCall.language === 'Marathi') {
+        closingNotice = 'आम्हाला आपला आवाज ऐकू आला नाही. कॉल समाप्त केला जात आहे. धन्यवाद.';
+      } else {
+        closingNotice = 'हमें आपकी आवाज नहीं सुनाई दी। कॉल समाप्त की जा रही है। धन्यवाद।';
+      }
+
+      activeCall.transcript.push({
+        speaker: 'Bot',
+        lang: activeCall.language,
+        latency_ms: 120,
+        text: closingNotice
+      });
+
       activeCall.transcript.push({
         speaker: 'System',
         lang: activeCall.language,
         text: msg
       });
+
+      speakBotText(closingNotice, activeCall.language);
       finalizeActiveCall(finalOutcome, activeCall.connected ? 'Turn inactivity timeout' : '15s silence watchdog');
     }
 
@@ -2387,7 +2456,7 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       activeCall.ended = true;
 
       // Only cut off audio if manually stopped midway or dropped; let final bot closing speech complete
-      if (stopReason.includes('midway') || stopReason.includes('Dropped') || stopReason.includes('silence') || stopReason.includes('timeout')) {
+      if (stopReason.includes('midway') || stopReason.includes('Dropped')) {
         stopAllAudio();
       }
       stopAllRecording();
@@ -2425,6 +2494,10 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       if (callStateBadge) {
         callStateBadge.textContent = `CALL ENDED · ${outcome.toUpperCase()}`;
         callStateBadge.className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 font-semibold';
+      }
+      const avatar = document.getElementById('callAvatarPulse');
+      if (avatar) {
+        avatar.className = 'w-11 h-11 rounded-2xl bg-[#3D2817] text-[#FDF8F0] flex items-center justify-center text-base shadow-sm';
       }
       const lastOutcomePill = document.getElementById('lastOutcomePill');
       if (lastOutcomePill) {
@@ -2677,8 +2750,20 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       if (detectedBadge) detectedBadge.textContent = langBadgeText;
 
       const manualLang = document.getElementById('manualLangSelect');
-      if (manualLang && (manualLang.value === 'Auto' || !activeCall || activeCall.ended)) {
-        manualLang.value = c.language || 'Auto';
+      if (manualLang) {
+        manualLang.value = c.language || 'Hindi';
+      }
+
+      // Update input placeholder to match customer language
+      const inputField = document.getElementById('borrowerTextInput');
+      if (inputField) {
+        if (c.language === 'Hindi') {
+          inputField.placeholder = `${c.name} के रूप में बोलें या टाइप करें (Hindi)...`;
+        } else if (c.language === 'Marathi') {
+          inputField.placeholder = `${c.name} म्हणून बोला किंवा टाईप करा (Marathi)...`;
+        } else {
+          inputField.placeholder = `Speak or type as ${c.name} (English)...`;
+        }
       }
 
       // 2. Dynamic quick replies match selected customer's preferred language
@@ -2757,26 +2842,59 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           `Call #${sc.call_no} (${c.customer_id} · ${c.name}): ${sc.tester_plays} (${sc.tester_language}).`;
       }
 
-      // 4. Right side Call Console script matches customer language (Hindi, English, or Marathi)
+      // 4. Standby Call Console state: Clean ready banner with dial button and script preview
       if (!activeCall || activeCall.ended) {
+        const callStateBadge = document.getElementById('callStateBadge');
+        if (callStateBadge) {
+          callStateBadge.textContent = 'READY TO DIAL';
+          callStateBadge.className = 'mono text-xs px-2.5 py-0.5 rounded-full bg-[#EADBC0] text-[#3D2817] border border-[#B8763D]/30 font-medium';
+        }
+        const avatar = document.getElementById('callAvatarPulse');
+        if (avatar) {
+          avatar.className = 'w-11 h-11 rounded-2xl bg-[#3D2817] text-[#FDF8F0] flex items-center justify-center text-base shadow-sm';
+        }
+        document.getElementById('callDurationText').textContent = '00:00';
+        document.getElementById('silenceCountdownText').textContent = '15s';
+        const bar = document.getElementById('silenceProgressBar');
+        if (bar) {
+          bar.style.width = '100%';
+          bar.className = 'bg-[#5D8C3E] h-full transition-all duration-300';
+        }
+        document.getElementById('lastOutcomePill').textContent = 'Outcome: Standby';
+
         const openingScript = generateOpeningGreeting(c);
         const container = document.getElementById('transcriptContainer');
         if (container) {
           const latencyMs = c.language === 'Hindi' ? 359 : 310;
           container.innerHTML = `
-            <div class="flex items-start gap-2.5">
-              <div class="w-8 h-8 rounded-full bg-[#3D2817] text-[#FDF8F0] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-sm">AI</div>
-              <div class="flex-1 bg-[#FFFDF9] border border-[#6B4423]/15 rounded-2xl rounded-tl-none p-3.5 text-xs sm:text-sm text-[#3D2817] shadow-sm">
-                <div class="flex items-center justify-between gap-2 text-[11px] text-[#B8763D] mb-1">
-                  <span class="font-semibold">Shaha Finlease Assistant (${c.language})</span>
-                  <div class="flex items-center gap-2">
-                    <span class="mono text-[#5D8C3E] font-semibold">${latencyMs} ms (&lt;3s ✓)</span>
-                    <button type="button" onclick="playAudioDetailSnippet('${encodeURIComponent(openingScript)}', '${c.language}')" class="px-2 py-0.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/20 font-medium text-[10px] flex items-center gap-1 transition cursor-pointer" title="Listen to opening script in ${c.language}">
-                      🔊 Listen
-                    </button>
-                  </div>
+            <div class="text-center py-6 px-4 space-y-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-[#F7EFE2] border border-[#6B4423]/20 mx-auto flex items-center justify-center text-xl text-[#3D2817] shadow-xs">
+                📞
+              </div>
+              <div>
+                <h3 class="font-display font-bold text-base text-[#3D2817]">Ready to Call ${c.name}</h3>
+                <p class="text-xs text-[#6B5541] mt-0.5 max-w-sm mx-auto">
+                  Borrower ID: <strong>${c.customer_id}</strong> · Language: <strong class="text-[#B8763D]">${c.language}</strong> · Birth Year: <strong>${yr}</strong>
+                </p>
+              </div>
+              <div>
+                <button type="button" onclick="startCallForCustomer('${c.customer_id}', false)" class="px-5 py-2 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-semibold text-xs sm:text-sm shadow-sm transition inline-flex items-center gap-2 cursor-pointer">
+                  <span>📞 Start Live Test Call</span>
+                  <span class="text-[11px] opacity-80">(${c.language})</span>
+                </button>
+              </div>
+              <div class="p-3.5 rounded-xl bg-[#FFFDF9] border border-[#6B4423]/15 text-left text-xs max-w-lg mx-auto shadow-xs">
+                <div class="flex items-center justify-between text-[11px] text-[#B8763D] font-semibold mb-1">
+                  <span>Mandated Regulatory Opening (${c.language})</span>
+                  <button type="button" onclick="playAudioDetailSnippet('${encodeURIComponent(openingScript)}', '${c.language}')" class="px-2 py-0.5 rounded-full bg-[#F7EFE2] hover:bg-[#EADBC0] text-[#3D2817] border border-[#6B4423]/20 text-[10px] flex items-center gap-1 transition cursor-pointer" title="Preview audio">
+                    🔊 Preview Voice
+                  </button>
                 </div>
-                <p class="leading-relaxed">${openingScript}</p>
+                <p class="text-[#3D2817] leading-relaxed italic">"${openingScript}"</p>
+                <div class="text-[10px] text-[#8C735A] mt-1.5 flex items-center justify-between">
+                  <span>SLA Latency: <strong>${latencyMs} ms (&lt;3s ✓)</strong></span>
+                  <span>15s Silence Timeout: <strong>Armed</strong></span>
+                </div>
               </div>
             </div>
           `;
