@@ -343,7 +343,7 @@
                     <th class="py-2.5 px-2">Phone</th>
                     <th class="py-2.5 px-2">Birth Yr</th>
                     <th class="py-2.5 px-2">Lang</th>
-                    <th class="py-2.5 px-3 text-right">Dial</th>
+                    <th class="py-2.5 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="customerTableBody" class="divide-y divide-[#6B4423]/10">
@@ -362,8 +362,11 @@
                 Call #1 (C001 · Rahul Sharma): Right customer confirms name and gives correct birth year (1985) in Hindi.
               </p>
               <div class="flex flex-wrap items-center gap-2 pt-1">
-                <button id="autoPlayPersonaBtn" type="button" class="flex-1 py-2 px-3.5 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-xs font-medium shadow-sm transition">
-                  ▶ Auto-Play This Customer's Test Call
+                <button id="playPersonaSampleAudioBtn" type="button" class="flex-1 py-2 px-3.5 rounded-full bg-[#B8763D] hover:bg-[#965c2b] text-[#FDF8F0] text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer" title="Listen to pre-recorded sample call audio for this persona">
+                  <span>🎧 Sample Audio</span>
+                </button>
+                <button id="autoPlayPersonaBtn" type="button" class="py-2 px-3 rounded-full bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] text-xs font-medium shadow-sm transition" title="Auto-run simulated test script in console">
+                  ▶ Auto-Play Script
                 </button>
                 <button id="runAll10TestsBtn" type="button" class="py-2 px-3 rounded-full bg-[#FFFDF9] hover:bg-[#EADBC0]/60 text-[#3D2817] border border-[#6B4423]/20 text-xs font-medium transition">
                   ⚡ Reload All 10 `test_calls.csv`
@@ -1546,6 +1549,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         if (indicator) indicator.classList.add('hidden');
         if (stopBtn) stopBtn.classList.add('hidden');
         fullCallAudioPlayer = null;
+        currentlyPlayingSampleId = null;
+        renderCustomerTable();
       };
 
       const playPromise = audio.play();
@@ -1553,6 +1558,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         playPromise.catch(err => {
           console.warn('Full call audio play error:', err);
           showToast('Audio Playback', 'Please click on the page to grant audio permission.', 'amber');
+          currentlyPlayingSampleId = null;
+          renderCustomerTable();
         });
       }
     };
@@ -1562,6 +1569,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
         try { fullCallAudioPlayer.pause(); } catch(e) {}
         fullCallAudioPlayer = null;
       }
+      currentlyPlayingSampleId = null;
+      renderCustomerTable();
       const indicator = document.getElementById('fullAudioPlayingIndicator');
       const stopBtn = document.getElementById('stopFullAudioBtn');
       if (indicator) indicator.classList.add('hidden');
@@ -2164,6 +2173,11 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     // =========================================================================
     async function startCallForCustomer(customerId, isAutoPlay = false, forcedCallId = null) {
       clearAutoPlayTimeouts();
+      if (fullCallAudioPlayer) {
+        try { fullCallAudioPlayer.pause(); } catch(e) {}
+        fullCallAudioPlayer = null;
+      }
+      currentlyPlayingSampleId = null;
       if (activeCall && !activeCall.ended) {
         finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Stopped before starting next call');
       }
@@ -2536,8 +2550,49 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
     }
 
     // =========================================================================
-    // 8. AUTO-PLAY PERSONA SIMULATION (`test_calls.csv`)
+    // 8. SAMPLE CALL AUDIO PLAYER & AUTO-PLAY PERSONA SIMULATION
     // =========================================================================
+    let currentlyPlayingSampleId = null;
+
+    function playCustomerSampleAudio(customerId) {
+      const activeList = isRealTelephonyMode ? realLeads : getActiveTestCustomers();
+      const customer = activeList.find(c => c.customer_id === customerId) || activeList[0];
+      if (!customer) return;
+
+      selectedCustomerId = customerId;
+      updateSelectedCustomerHeader();
+
+      // If already playing this same sample audio, toggle stop
+      if (currentlyPlayingSampleId === customerId && fullCallAudioPlayer && !fullCallAudioPlayer.paused) {
+        stopFullCallAudio();
+        return;
+      }
+
+      // Stop any active interactive call or TTS audio to avoid audio collision
+      if (activeCall && !activeCall.ended) {
+        finalizeActiveCall(activeCall.connected ? 'Third party answered' : 'Not connected', 'Stopped to play sample audio');
+      }
+      if (currentTtsAudio) {
+        try { currentTtsAudio.pause(); } catch(e) {}
+        currentTtsAudio = null;
+      }
+      clearAutoPlayTimeouts();
+
+      const scenario = TEST_SCENARIOS[customerId];
+      const callNo = scenario ? scenario.call_no : (parseInt(customerId.replace(/\D/g, ''), 10) || 1);
+      const callId = `CALL-${1000 + callNo}`;
+      const audioUrl = `/audio_recordings/${callId}.mp3`;
+      const expectedOutcome = scenario ? scenario.expected_outcome : 'Sample Call';
+
+      currentlyPlayingSampleId = customerId;
+      renderCustomerTable();
+
+      const title = `${callId} · ${customer.name} (${customer.language}) · ${expectedOutcome}`;
+      playFullCallAudio(audioUrl, title);
+
+      showToast('Sample Audio Playing', `Playing full call recording for ${customer.name} (${callId}) until closing greeting.`, 'indigo');
+    }
+
     function clearAutoPlayTimeouts() {
       autoPlayTimeoutIds.forEach(id => clearTimeout(id));
       autoPlayTimeoutIds = [];
@@ -2627,9 +2682,16 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
               <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.language === 'Hindi' ? 'bg-[#D4A056]/20 text-[#6B4423]' : 'bg-[#4B8FB8]/15 text-[#4B8FB8]'}">${c.language}</span>
             </td>
             <td class="py-2.5 px-3 text-right">
-              <button type="button" data-dial-customer="${c.customer_id}" class="px-3 py-1 rounded-full ${isRealTelephonyMode ? 'bg-[#5D8C3E] hover:bg-[#4d7533] text-[#FDF8F0] font-semibold shadow-sm' : 'bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium shadow-sm'} transition text-xs inline-flex items-center gap-1">
-                <span>${isRealTelephonyMode ? '📱 Real Call' : '📞 Call'}</span>
-              </button>
+              <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
+                <button type="button" data-dial-customer="${c.customer_id}" class="px-2.5 py-1 rounded-full ${isRealTelephonyMode ? 'bg-[#5D8C3E] hover:bg-[#4d7533] text-[#FDF8F0] font-semibold' : 'bg-[#3D2817] hover:bg-[#6B4423] text-[#FDF8F0] font-medium'} transition text-xs inline-flex items-center gap-1 shadow-sm" title="${isRealTelephonyMode ? 'Dial real outbound call via Twilio' : 'Dial and start live interactive test call'}">
+                  <span>${isRealTelephonyMode ? '📱 Real Call' : '📞 Call'}</span>
+                </button>
+                ${!isRealTelephonyMode ? `
+                <button type="button" data-sample-audio="${c.customer_id}" class="px-2.5 py-1 rounded-full ${currentlyPlayingSampleId === c.customer_id ? 'bg-[#B8763D] text-[#FFFDF9] font-semibold animate-pulse shadow-sm' : 'bg-[#FFFDF9] hover:bg-[#EADBC0] text-[#6B4423] border border-[#6B4423]/25 font-medium shadow-sm'} transition text-xs inline-flex items-center gap-1" title="Listen to pre-recorded sample call audio for ${c.name}">
+                  <span>${currentlyPlayingSampleId === c.customer_id ? '🔊 Playing...' : '🎧 Sample Audio'}</span>
+                </button>
+                ` : ''}
+              </div>
             </td>
           </tr>
         `;
@@ -3077,6 +3139,13 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
       });
 
       document.getElementById('customerTableBody').addEventListener('click', (e) => {
+        const sampleBtn = e.target.closest('[data-sample-audio]');
+        if (sampleBtn) {
+          const cid = sampleBtn.getAttribute('data-sample-audio');
+          playCustomerSampleAudio(cid);
+          return;
+        }
+
         const dialBtn = e.target.closest('[data-dial-customer]');
         if (dialBtn) {
           const cid = dialBtn.getAttribute('data-dial-customer');
@@ -3084,7 +3153,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
             const cust = realLeads.find(c => c.customer_id === cid) || realLeads[0];
             if (cust) executeRealOutboundCall(cust);
           } else {
-            autoPlayCustomerScenario(cid);
+            // Live interactive test call (NO pre-recorded sample audio playback)
+            startCallForCustomer(cid, false);
           }
           return;
         }
@@ -3108,7 +3178,8 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           const cust = realLeads.find(c => c.customer_id === selectedCustomerId) || realLeads[0];
           if (cust) executeRealOutboundCall(cust);
         } else {
-          autoPlayCustomerScenario(selectedCustomerId);
+          // Live interactive test call for selected customer
+          startCallForCustomer(selectedCustomerId, false);
         }
       });
 
@@ -3340,6 +3411,13 @@ CREATE TABLE dbo.Call (call_id VARCHAR(20) PRIMARY KEY, customer_id VARCHAR(10),
           startWhisperUploadFlow();
         }
       });
+
+      const playPersonaSampleAudioBtn = document.getElementById('playPersonaSampleAudioBtn');
+      if (playPersonaSampleAudioBtn) {
+        playPersonaSampleAudioBtn.addEventListener('click', () => {
+          playCustomerSampleAudio(selectedCustomerId);
+        });
+      }
 
       document.getElementById('autoPlayPersonaBtn').addEventListener('click', () => {
         document.getElementById('clockModeSelect').value = 'in_window';

@@ -1027,16 +1027,15 @@ def process_turn(
 
     cb_time = parsed.get("callback_time") or parsed.get("extracted_callback_time")
     cb_time_iso = parsed.get("callback_time_iso")
-    if parsed.get("outcome") == "Callback requested" or cb_time:
-        norm_cb, norm_iso = extract_callback_time_and_iso(
-            f"{cb_time or ''} {input_text}"
-        )
-        if norm_cb:
-            cb_time = norm_cb
-            cb_time_iso = norm_iso
-        elif not cb_time:
-            cb_time = "6:00 PM"
-            cb_time_iso = "18:00:00"
+    norm_cb, norm_iso = extract_callback_time_and_iso(f"{cb_time or ''} {input_text}")
+    if norm_cb and (RELATIVE_REGEX.search(input_text) or stage == "AWAITING_CALLBACK_TIME" or parsed.get("outcome") == "Callback requested" or cb_time):
+        cb_time = norm_cb
+        cb_time_iso = norm_iso
+        parsed["outcome"] = "Callback requested"
+        parsed["stage"] = "COMPLETED"
+    elif parsed.get("outcome") == "Callback requested" and not cb_time:
+        cb_time = "6:00 PM"
+        cb_time_iso = "18:00:00"
 
     return {
         "detected_language": detected_lang,
