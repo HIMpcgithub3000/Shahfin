@@ -894,7 +894,7 @@ def run_deterministic_nlu(
             bot_reply = f"I am an automated assistant calling from Shaha Finlease. This call is recorded for verification purposes. Am I speaking with {customer_name}?"
 
     # 8.6 Name Discrepancy Guardrail (e.g. Rahul Kumar when customer is Rahul Sharma)
-    elif check_name_discrepancy(customer_name, input_text)[0] and stage == "AWAITING_NAME_CONFIRMATION":
+    elif check_name_discrepancy(customer_name, input_text)[0] and stage in ("AWAITING_NAME_CONFIRMATION", "INITIATED", "AWAITING_NAME"):
         outcome = "Wrong number"
         new_stage = "COMPLETED"
         if detected_lang == "Hindi":
@@ -1002,7 +1002,7 @@ def process_turn(
 
     # Strict Identity Guardrail: If name mismatch detected, override LLM false confirmation!
     is_name_mismatch, _ = check_name_discrepancy(customer_name, input_text)
-    if is_name_mismatch and stage == "AWAITING_NAME_CONFIRMATION":
+    if is_name_mismatch and stage in ("AWAITING_NAME_CONFIRMATION", "INITIATED", "AWAITING_NAME"):
         parsed["stage"] = "COMPLETED"
         parsed["outcome"] = "Wrong number"
         if detected_lang == "Hindi":

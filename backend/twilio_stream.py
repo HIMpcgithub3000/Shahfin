@@ -1,6 +1,6 @@
 """Twilio Media Stream WebSocket Handler for Real-Time Conversational AI Voicebot.
 
-Implements the VoiceBrew / Pipecat AI 16-Stage Streaming Pipeline DAG:
+Implements the 16-Stage Streaming Pipeline DAG:
 1. Transport Input (Twilio WSS 8kHz mu-law audio packets)
 2. SttAudioUpsampler16k (8kHz mu-law -> 16kHz PCM WAV)
 3. Streaming STT with Deepgram/Sarvam/Whisper

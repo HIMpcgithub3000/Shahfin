@@ -10,7 +10,7 @@
 ## SECTION A — Executive Summary
 
 ### 1. Overall Project Status
-The evaluated codebase represents a **fully functional, production-minded prototype** that successfully implements the end-to-end Right-Party Verification voice pipeline for Shaha Finlease. The application is **not a static mock**: it features a live FastAPI backend, real PostgreSQL persistence (in schema `dbo`), real-time Microsoft Edge Neural TTS audio streaming in Hindi, English, and Marathi, multi-tier NLU (Groq Llama-3.3-70B, Google Gemini 2.5 Flash, and a deterministic local fallback), code-level safety guardrails, and a Two-Screen VoiceBrew UI.
+The evaluated codebase represents a **fully functional, production-minded prototype** that successfully implements the end-to-end Right-Party Verification voice pipeline for Shaha Finlease. The application is **not a static mock**: it features a live FastAPI backend, real PostgreSQL persistence (in schema `dbo`), real-time Microsoft Edge Neural TTS audio streaming in Hindi, English, and Marathi, multi-tier NLU (Groq Llama-3.3-70B, Google Gemini 2.5 Flash, and a deterministic local fallback), code-level safety guardrails, and a Two-Screen Call Console & Report UI.
 
 ### 2. Quantitative Compliance Scorecard
 * **Total Audited Requirements**: 32 atomic requirements across 5 feature categories and 6 compliance guardrails.
@@ -79,7 +79,7 @@ The evaluated codebase represents a **fully functional, production-minded protot
 ```mermaid
 flowchart TD
     subgraph Client ["Client Browser (http://localhost:8000)"]
-        UI["Two-Screen VoiceBrew UI\n(frontend/index.html)"]
+        UI["Two-Screen Call Console UI\n(frontend/index.html)"]
         WebSpeech["Web Speech API\n(Microphone STT)"]
         AudioPlayer["HTML5 Audio Element\n(Neural Audio Playback)"]
     end

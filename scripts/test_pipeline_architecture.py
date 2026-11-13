@@ -1,4 +1,4 @@
-"""Test Suite for VoiceBrew 16-Stage Streaming Pipeline DAG Architecture.
+"""Test Suite for the 16-Stage Streaming Pipeline DAG Architecture.
 
 Validates all 16 pipeline processors, filters, barge-in echo guards,
 silence watchdog, and 2-channel stereo audio recorder.
