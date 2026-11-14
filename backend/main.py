@@ -430,7 +430,7 @@ def get_runtime_tunnel() -> Dict[str, str]:
                 url = f.read().strip()
         except Exception:
             pass
-    return {"url": url or "https://ranging-bottles-anime-rated.trycloudflare.com"}
+    return {"url": url or "https://warning-lesser-vip-walker.trycloudflare.com"}
 
 
 @app.post("/api/telephony/outbound")
